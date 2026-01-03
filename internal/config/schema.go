@@ -1,0 +1,69 @@
+package config
+
+// Config represents the complete configuration for ctl
+type Config struct {
+	Worktree WorktreeConfig `mapstructure:"worktree" yaml:"worktree"`
+	Claude   ClaudeConfig   `mapstructure:"claude" yaml:"claude"`
+	Global   GlobalConfig   `mapstructure:"global" yaml:"global"`
+}
+
+// WorktreeConfig contains worktree-related configuration
+type WorktreeConfig struct {
+	// BaseLocation is the base directory for worktrees (relative to repo parent or absolute)
+	BaseLocation string `mapstructure:"base_location" yaml:"base_location"`
+
+	// AutoCleanup determines if worktree should be automatically cleaned up when removed
+	AutoCleanup bool `mapstructure:"auto_cleanup" yaml:"auto_cleanup"`
+
+	// DefaultSourceBranch is the default branch to create new worktrees from
+	DefaultSourceBranch string `mapstructure:"default_source_branch" yaml:"default_source_branch"`
+}
+
+// ClaudeConfig contains Claude CLI integration configuration
+type ClaudeConfig struct {
+	// DefaultMode is the default mode when launching Claude (agent or chat)
+	DefaultMode string `mapstructure:"default_mode" yaml:"default_mode"`
+
+	// AutoLaunch determines if Claude should be automatically launched after creating worktree
+	AutoLaunch bool `mapstructure:"auto_launch" yaml:"auto_launch"`
+
+	// ExtraArgs are additional arguments to pass to Claude CLI
+	ExtraArgs []string `mapstructure:"extra_args" yaml:"extra_args"`
+
+	// CLIPath is the path to Claude CLI (auto-detected if not specified)
+	CLIPath string `mapstructure:"cli_path" yaml:"cli_path"`
+}
+
+// GlobalConfig contains global settings
+type GlobalConfig struct {
+	// Verbosity level (0=quiet, 1=normal, 2=verbose)
+	Verbosity int `mapstructure:"verbosity" yaml:"verbosity"`
+
+	// Color determines if output should be colorized
+	Color bool `mapstructure:"color" yaml:"color"`
+
+	// Editor for opening files (fallback to $EDITOR)
+	Editor string `mapstructure:"editor" yaml:"editor"`
+}
+
+// DefaultConfig returns the default configuration
+func DefaultConfig() *Config {
+	return &Config{
+		Worktree: WorktreeConfig{
+			BaseLocation:        "../.worktrees",
+			AutoCleanup:         true,
+			DefaultSourceBranch: "", // Empty means use current branch
+		},
+		Claude: ClaudeConfig{
+			DefaultMode: "agent",
+			AutoLaunch:  true,
+			ExtraArgs:   []string{},
+			CLIPath:     "", // Auto-detect
+		},
+		Global: GlobalConfig{
+			Verbosity: 1,
+			Color:     true,
+			Editor:    "",
+		},
+	}
+}
