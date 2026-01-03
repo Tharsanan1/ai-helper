@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Installation script for ctl - Git Worktree Manager
+# Installation script for aihelper - AI-Powered Git Worktree Manager
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/tharsanan1/ai-helper/main/install.sh | bash
@@ -24,7 +24,7 @@ USE_SUDO="true"
 OS="$(uname -s)"
 ARCH="$(uname -m)"
 
-echo -e "${BLUE}ctl Installation Script${NC}"
+echo -e "${BLUE}aihelper Installation Script${NC}"
 echo "========================="
 echo ""
 
@@ -110,10 +110,10 @@ fi
 
 # Build the binary
 echo ""
-echo "Building ctl..."
+echo "Building aihelper..."
 cd "$BUILD_DIR"
 
-go build -o ctl -ldflags="-s -w" ./cmd/ctl || {
+go build -o aihelper -ldflags="-s -w" ./cmd/aihelper || {
     echo -e "${RED}Error: Build failed${NC}"
     exit 1
 }
@@ -122,21 +122,21 @@ echo -e "${GREEN}✓${NC} Build successful"
 
 # Install the binary
 echo ""
-echo "Installing ctl to $INSTALL_DIR..."
+echo "Installing aihelper to $INSTALL_DIR..."
 
 if [ "$USE_SUDO" = "true" ]; then
-    sudo mv ctl "$INSTALL_DIR/" || {
+    sudo mv aihelper "$INSTALL_DIR/" || {
         echo -e "${RED}Error: Installation failed${NC}"
         echo "Try running with sudo or choose a different installation directory"
         exit 1
     }
-    sudo chmod +x "$INSTALL_DIR/ctl"
+    sudo chmod +x "$INSTALL_DIR/aihelper"
 else
-    mv ctl "$INSTALL_DIR/" || {
+    mv aihelper "$INSTALL_DIR/" || {
         echo -e "${RED}Error: Installation failed${NC}"
         exit 1
     }
-    chmod +x "$INSTALL_DIR/ctl"
+    chmod +x "$INSTALL_DIR/aihelper"
 fi
 
 echo -e "${GREEN}✓${NC} Installation complete"
@@ -150,11 +150,11 @@ fi
 echo ""
 echo "Verifying installation..."
 
-if command -v ctl &> /dev/null; then
-    CTL_VERSION=$(ctl --version 2>&1 | head -n1)
-    echo -e "${GREEN}✓${NC} ctl is installed: $CTL_VERSION"
+if command -v aihelper &> /dev/null; then
+    AIHELPER_VERSION=$(aihelper --version 2>&1 | head -n1)
+    echo -e "${GREEN}✓${NC} aihelper is installed: $AIHELPER_VERSION"
 else
-    echo -e "${YELLOW}Warning: ctl command not found in PATH${NC}"
+    echo -e "${YELLOW}Warning: aihelper command not found in PATH${NC}"
     echo "You may need to:"
     echo "  1. Add $INSTALL_DIR to your PATH"
     echo "  2. Restart your terminal"
@@ -168,9 +168,9 @@ if command -v claude &> /dev/null; then
 else
     echo -e "${YELLOW}Note: Claude CLI not found${NC}"
     echo "Claude Code integration is optional. You can:"
-    echo "  - Use ctl without Claude (--no-claude flag)"
+    echo "  - Use aihelper without Claude (--no-claude flag)"
     echo "  - Install Claude CLI later and configure it with:"
-    echo "    ctl config set claude.cli_path /path/to/claude"
+    echo "    aihelper config set claude.cli_path /path/to/claude"
 fi
 
 # Post-installation instructions
@@ -180,11 +180,11 @@ echo -e "${GREEN}Installation successful!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo "Next steps:"
-echo "  1. Run 'ctl --help' to see available commands"
-echo "  2. Run 'ctl config list' to view configuration"
+echo "  1. Run 'aihelper --help' to see available commands"
+echo "  2. Run 'aihelper config list' to view configuration"
 echo "  3. Try creating a worktree:"
 echo "     cd /path/to/git/repo"
-echo "     ctl worktree create my-feature --no-claude"
+echo "     aihelper worktree create my-feature --no-claude"
 echo ""
 echo "For more information, visit:"
 echo "  https://github.com/tharsanan1/ai-helper"
@@ -201,7 +201,7 @@ if [[ "$SETUP_COMPLETION" =~ ^[Yy]$ ]]; then
         bash)
             COMPLETION_DIR="/etc/bash_completion.d"
             if [ -d "$COMPLETION_DIR" ]; then
-                sudo ctl completion bash > "$COMPLETION_DIR/ctl" 2>/dev/null || true
+                sudo aihelper completion bash > "$COMPLETION_DIR/aihelper" 2>/dev/null || true
                 echo -e "${GREEN}✓${NC} Bash completion installed"
                 echo "Run 'source ~/.bashrc' or restart your terminal"
             else
@@ -209,9 +209,9 @@ if [[ "$SETUP_COMPLETION" =~ ^[Yy]$ ]]; then
             fi
             ;;
         zsh)
-            COMPLETION_FILE="$HOME/.zsh/completions/_ctl"
+            COMPLETION_FILE="$HOME/.zsh/completions/_aihelper"
             mkdir -p "$(dirname "$COMPLETION_FILE")"
-            ctl completion zsh > "$COMPLETION_FILE" 2>/dev/null || true
+            aihelper completion zsh > "$COMPLETION_FILE" 2>/dev/null || true
             echo -e "${GREEN}✓${NC} Zsh completion installed"
             echo "Add this to your ~/.zshrc if not already there:"
             echo "  fpath=(~/.zsh/completions \$fpath)"
@@ -220,7 +220,7 @@ if [[ "$SETUP_COMPLETION" =~ ^[Yy]$ ]]; then
         fish)
             COMPLETION_DIR="$HOME/.config/fish/completions"
             mkdir -p "$COMPLETION_DIR"
-            ctl completion fish > "$COMPLETION_DIR/ctl.fish" 2>/dev/null || true
+            aihelper completion fish > "$COMPLETION_DIR/aihelper.fish" 2>/dev/null || true
             echo -e "${GREEN}✓${NC} Fish completion installed"
             ;;
         *)

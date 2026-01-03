@@ -22,6 +22,7 @@ var (
 	createClaudeMode     string
 	createClaudeArgs     []string
 	createExistingBranch bool
+	createOpenCode       bool
 )
 
 // createCmd represents the create command
@@ -49,7 +50,10 @@ Examples:
   ctl worktree create experiment --no-claude
 
   # Use an existing branch
-  ctl worktree create feature-x -b existing-branch --existing-branch`,
+  ctl worktree create feature-x -b existing-branch --existing-branch
+
+  # Create worktree and launch OpenCode instead of Claude
+  ctl worktree create feature-x --opencode`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCreate,
 }
@@ -62,6 +66,7 @@ func init() {
 	createCmd.Flags().StringVar(&createClaudeMode, "claude-mode", "", "Claude mode: chat, agent (default from config)")
 	createCmd.Flags().StringSliceVar(&createClaudeArgs, "claude-args", []string{}, "Additional arguments to pass to Claude CLI")
 	createCmd.Flags().BoolVarP(&createExistingBranch, "existing-branch", "e", false, "Use existing branch instead of creating new")
+	createCmd.Flags().BoolVar(&createOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
@@ -125,11 +130,21 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Created worktree at: %s\n", worktreePath)
 	}
 
-	// Launch Claude if enabled
-	launchClaude := !createNoClaude && cfg.Claude.AutoLaunch
-	if launchClaude {
+	// Launch tool if enabled
+	launchClaude := !createNoClaude && cfg.Claude.AutoLaunch && !createOpenCode
+	launchOpenCode := createOpenCode
+
+	if launchOpenCode {
+		if err := launchOpenCodeTool(worktreePath); err != nil {
+			if util.GlobalContext.IsColorEnabled() {
+				color.Yellow("Warning: failed to launch OpenCode: %v\n", err)
+			} else {
+				fmt.Printf("Warning: failed to launch OpenCode: %v\n", err)
+			}
+			return nil
+		}
+	} else if launchClaude {
 		if err := launchClaudeTool(worktreePath, cfg); err != nil {
-			// Don't fail the entire operation if Claude launch fails
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch Claude: %v\n", err)
 			} else {
@@ -137,6 +152,36 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			}
 			return nil
 		}
+	}
+
+	return nil
+}
+
+func launchOpenCodeTool(worktreePath string) error {
+	opencodeLauncher := launcher.NewOpenCodeLauncher("")
+
+	if !opencodeLauncher.IsAvailable() {
+		return fmt.Errorf("OpenCode CLI not found. Please install it")
+	}
+
+	opts := launcher.LaunchOptions{
+		WorkDir:     worktreePath,
+		Interactive: launcher.IsTTY(),
+	}
+
+	if util.GlobalContext.IsVerbose() {
+		fmt.Printf("Launching OpenCode in %s...\n", worktreePath)
+	}
+
+	if util.GlobalContext.IsColorEnabled() {
+		color.Cyan("Launching OpenCode...\n")
+	} else {
+		fmt.Println("Launching OpenCode...")
+	}
+
+	ctx := context.Background()
+	if err := opencodeLauncher.Launch(ctx, opts); err != nil {
+		return err
 	}
 
 	return nil

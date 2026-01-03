@@ -274,11 +274,11 @@ ctl worktree create feature-x
 **Config location changed:**
 
 Old: `~/.ctl/config.yaml`
-New: `~/.config/ctl/config.yaml`
+New: `~/.config/aihelper/config.yaml`
 
 To migrate:
 ```bash
-mv ~/.ctl/config.yaml ~/.config/ctl/config.yaml
+mv ~/.ctl/config.yaml ~/.config/aihelper/config.yaml
 ```
 ```
 

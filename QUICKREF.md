@@ -168,8 +168,8 @@ ctl --version
 
 ```
 User files:
-  ~/.config/ctl/config.yaml    # Global config
-  .ctl.yaml                    # Repo config
+  ~/.config/aihelper/config.yaml    # Global config
+  .aihelper.yaml                    # Repo config
   ../.worktrees/               # Worktrees
 
 Project files:

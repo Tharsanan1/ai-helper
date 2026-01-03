@@ -14,13 +14,13 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "ctl",
-	Short: "A CLI tool for managing git worktrees and launching development tools",
-	Long: `ctl is a command-line tool that helps you manage git worktrees
+	Use:   "aihelper",
+	Short: "AI-powered Git worktree manager with Claude Code integration",
+	Long: `aihelper is a command-line tool that helps you manage git worktrees
 and seamlessly launch development tools like Claude Code CLI.
 
 It provides an intuitive interface for creating, listing, and managing
-git worktrees, with built-in support for automatically launching tools
+git worktrees, with built-in support for automatically launching AI tools
 in the worktree context.`,
 	Version: "0.1.0",
 }
@@ -35,7 +35,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// Global flags
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/ctl/config.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/aihelper/config.yaml)")
 	rootCmd.PersistentFlags().BoolVarP(&util.GlobalContext.Verbose, "verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().BoolVar(&util.GlobalContext.DryRun, "dry-run", false, "dry run mode (don't execute actions)")
 	rootCmd.PersistentFlags().BoolVar(&util.GlobalContext.NoColor, "no-color", false, "disable colored output")

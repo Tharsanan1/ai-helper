@@ -1,7 +1,7 @@
 .PHONY: build install uninstall test clean help
 
 # Binary name
-BINARY_NAME=ctl
+BINARY_NAME=aihelper
 
 # Installation directory
 PREFIX ?= /usr/local
@@ -40,7 +40,7 @@ help:
 ## build: Build the binary
 build:
 	@echo "Building $(BINARY_NAME)..."
-	$(GOBUILD) $(LDFLAGS) -o $(BINARY_NAME) ./cmd/ctl
+	$(GOBUILD) $(LDFLAGS) -o $(BINARY_NAME) ./cmd/aihelper
 	@echo "Build complete: ./$(BINARY_NAME)"
 
 ## install: Install the binary to system (requires sudo)
@@ -130,22 +130,22 @@ run: build
 
 ## dev: Run in development mode
 dev:
-	$(GOCMD) run ./cmd/ctl
+	$(GOCMD) run ./cmd/aihelper
 
 ## release: Build release binaries for multiple platforms
 release:
 	@echo "Building release binaries..."
 	@mkdir -p dist
 	# Linux AMD64
-	GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-amd64 ./cmd/ctl
+	GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-amd64 ./cmd/aihelper
 	# Linux ARM64
-	GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-arm64 ./cmd/ctl
+	GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-arm64 ./cmd/aihelper
 	# macOS AMD64
-	GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-amd64 ./cmd/ctl
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-amd64 ./cmd/aihelper
 	# macOS ARM64 (Apple Silicon)
-	GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-arm64 ./cmd/ctl
+	GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-arm64 ./cmd/aihelper
 	# Windows AMD64
-	GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-windows-amd64.exe ./cmd/ctl
+	GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/$(BINARY_NAME)-windows-amd64.exe ./cmd/aihelper
 	@echo "Release binaries built in dist/"
 
 ## version: Show version information

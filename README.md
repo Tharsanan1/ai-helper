@@ -143,8 +143,8 @@ ctl worktree switch feature-auth
 
 `ctl` uses a layered configuration system:
 
-1. **Global config**: `~/.config/ctl/config.yaml`
-2. **Repository config**: `.ctl.yaml` (in repository root)
+1. **Global config**: `~/.config/aihelper/config.yaml`
+2. **Repository config**: `.aihelper.yaml` (in repository root)
 3. **Command-line flags**: Override config file settings
 
 Priority: Flags > Repository config > Global config > Defaults

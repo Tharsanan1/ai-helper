@@ -10,13 +10,13 @@ import (
 
 const (
 	// GlobalConfigDir is the directory for global configuration
-	GlobalConfigDir = ".config/ctl"
+	GlobalConfigDir = ".config/aihelper"
 
 	// GlobalConfigFile is the name of the global configuration file
 	GlobalConfigFile = "config.yaml"
 
 	// RepoConfigFile is the name of the repo-level configuration file
-	RepoConfigFile = ".ctl.yaml"
+	RepoConfigFile = ".aihelper.yaml"
 )
 
 // Manager handles configuration loading and management

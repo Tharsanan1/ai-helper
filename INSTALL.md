@@ -225,7 +225,7 @@ go install github.com/tharsanan1/ai-helper/cmd/ctl@latest
 sudo rm /usr/local/bin/ctl  # or rm ~/bin/ctl
 
 # Remove configuration (optional)
-rm -rf ~/.config/ctl
+rm -rf ~/.config/aihelper
 
 # Remove shell completions (optional)
 rm /etc/bash_completion.d/ctl  # or relevant completion file
