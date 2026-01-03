@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	internalConfig "github.com/tharsanan/ai-helper/internal/config"
+	internalConfig "github.com/tharsanan1/ai-helper/internal/config"
 )
 
 // getCmd represents the get command

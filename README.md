@@ -2,6 +2,27 @@
 
 `ctl` is a command-line tool for managing git worktrees with seamless integration for launching development tools like Claude Code CLI. It simplifies the workflow of creating isolated worktrees for feature development and automatically launches Claude in the worktree context.
 
+## 🚀 Quick Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tharsanan1/ai-helper/main/install.sh | bash
+```
+
+<details>
+<summary>What happens during installation?</summary>
+
+The installer will:
+- ✅ Check for Go and Git
+- ✅ Ask where to install (system-wide or user-only)
+- ✅ Build and install the `ctl` binary
+- ✅ Optionally set up shell completion
+- ✅ Verify the installation works
+
+No sudo required if you choose user-only installation!
+</details>
+
+**More options:** [Alternative installation methods](#installation) | [Detailed guide](INSTALL.md)
+
 ## Features
 
 - **Easy Worktree Management**: Create, list, remove, and switch between git worktrees with simple commands
@@ -12,10 +33,38 @@
 
 ## Installation
 
+### Quick Install (One-Liner)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tharsanan1/ai-helper/main/install.sh | bash
+```
+
+Or download and run the install script:
+
+```bash
+git clone https://github.com/tharsanan1/ai-helper.git
+cd ai-helper
+./install.sh
+```
+
+### Using Make
+
+```bash
+git clone https://github.com/tharsanan1/ai-helper.git
+cd ai-helper
+
+# Install system-wide (requires sudo)
+make install
+
+# Or install to ~/bin (no sudo)
+make install-user
+```
+
 ### From Source
 
 ```bash
 # Clone the repository
+git clone https://github.com/tharsanan1/ai-helper.git
 cd ai-helper
 
 # Build the binary
@@ -33,6 +82,8 @@ ctl --version
 - Go 1.24 or later
 - Git 2.5 or later (for worktree support)
 - Claude Code CLI (optional, for Claude integration)
+
+📖 **Detailed installation instructions**: See [INSTALL.md](INSTALL.md) for platform-specific guides, troubleshooting, and more options.
 
 ## Quick Start
 
@@ -377,9 +428,35 @@ The architecture supports easy addition of:
 - **Hook system**: Run custom scripts on worktree lifecycle events
 - **Remote worktree support**: Manage worktrees on remote servers
 
+## Updating
+
+To update to the latest version:
+
+```bash
+# Quick update
+curl -fsSL https://raw.githubusercontent.com/tharsanan1/ai-helper/main/install.sh | bash
+
+# Or manually
+cd /path/to/ai-helper
+git pull origin main
+make install
+```
+
+Check your version: `ctl --version`
+
+📖 **Complete update guide**: See [UPDATING.md](UPDATING.md)
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
+
+### For Maintainers
+
+See [UPDATING.md](UPDATING.md) for the release workflow.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and changes.
 
 ## License
 

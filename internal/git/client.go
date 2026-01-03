@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	pkgerrors "github.com/tharsanan/ai-helper/pkg/errors"
+	pkgerrors "github.com/tharsanan1/ai-helper/pkg/errors"
 )
 
 // Client wraps git operations using os/exec

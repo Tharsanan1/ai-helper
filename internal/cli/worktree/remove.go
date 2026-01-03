@@ -5,9 +5,9 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/tharsanan/ai-helper/internal/util"
-	"github.com/tharsanan/ai-helper/internal/git"
-	"github.com/tharsanan/ai-helper/internal/worktree"
+	"github.com/tharsanan1/ai-helper/internal/util"
+	"github.com/tharsanan1/ai-helper/internal/git"
+	"github.com/tharsanan1/ai-helper/internal/worktree"
 )
 
 var (

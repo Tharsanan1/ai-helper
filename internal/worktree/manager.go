@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tharsanan/ai-helper/internal/config"
-	"github.com/tharsanan/ai-helper/internal/git"
-	pkgerrors "github.com/tharsanan/ai-helper/pkg/errors"
+	"github.com/tharsanan1/ai-helper/internal/config"
+	"github.com/tharsanan1/ai-helper/internal/git"
+	pkgerrors "github.com/tharsanan1/ai-helper/pkg/errors"
 )
 
 // Manager handles worktree operations

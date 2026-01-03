@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/tharsanan/ai-helper/internal/cli"
+	"github.com/tharsanan1/ai-helper/internal/cli"
 )
 
 func main() {

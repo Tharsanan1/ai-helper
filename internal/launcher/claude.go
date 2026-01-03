@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	pkgerrors "github.com/tharsanan/ai-helper/pkg/errors"
+	pkgerrors "github.com/tharsanan1/ai-helper/pkg/errors"
 )
 
 // ClaudeLauncher implements ToolLauncher for Claude Code CLI

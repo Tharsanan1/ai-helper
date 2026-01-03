@@ -2,9 +2,9 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
-	cliConfig "github.com/tharsanan/ai-helper/internal/cli/config"
-	"github.com/tharsanan/ai-helper/internal/cli/worktree"
-	"github.com/tharsanan/ai-helper/internal/util"
+	cliConfig "github.com/tharsanan1/ai-helper/internal/cli/config"
+	"github.com/tharsanan1/ai-helper/internal/cli/worktree"
+	"github.com/tharsanan1/ai-helper/internal/util"
 )
 
 var (

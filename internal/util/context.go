@@ -3,7 +3,7 @@ package util
 import (
 	"fmt"
 
-	"github.com/tharsanan/ai-helper/internal/config"
+	"github.com/tharsanan1/ai-helper/internal/config"
 )
 
 // CLIContext holds the global CLI context
