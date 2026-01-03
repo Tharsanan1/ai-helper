@@ -28,8 +28,9 @@ var (
 
 // createCmd represents the create command
 var createCmd = &cobra.Command{
-	Use:   "create <name>",
-	Short: "Create a new worktree and optionally launch Claude",
+	Use:     "create <name>",
+	Aliases: []string{"c", "new"},
+	Short:   "Create a new worktree and optionally launch Claude",
 	Long: `Create a new git worktree with the specified name and optionally launch Claude Code CLI.
 
 The create command will:

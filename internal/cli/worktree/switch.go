@@ -22,8 +22,9 @@ var (
 
 // switchCmd represents the switch command
 var switchCmd = &cobra.Command{
-	Use:   "switch <name>",
-	Short: "Switch to an existing worktree and launch Claude",
+	Use:     "switch <name>",
+	Aliases: []string{"sw", "go"},
+	Short:   "Switch to an existing worktree and launch Claude",
 	Long: `Switch to an existing git worktree and launch Claude Code CLI.
 
 This command finds the worktree by name and launches Claude in its directory.

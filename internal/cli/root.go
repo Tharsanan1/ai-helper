@@ -43,6 +43,12 @@ func init() {
 	// Add command groups
 	rootCmd.AddCommand(worktree.WorktreeCmd)
 	rootCmd.AddCommand(cliConfig.ConfigCmd)
+
+	// Add single-letter shortcuts
+	rootCmd.AddCommand(worktree.CreateShortcutCmd)
+	rootCmd.AddCommand(worktree.SwitchShortcutCmd)
+	rootCmd.AddCommand(worktree.ListShortcutCmd)
+	rootCmd.AddCommand(worktree.RemoveShortcutCmd)
 }
 
 // initConfig reads in config file and ENV variables if set
