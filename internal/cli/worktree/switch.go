@@ -6,9 +6,9 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/tharsanan1/ai-helper/internal/util"
 	"github.com/tharsanan1/ai-helper/internal/git"
 	"github.com/tharsanan1/ai-helper/internal/launcher"
+	"github.com/tharsanan1/ai-helper/internal/util"
 	"github.com/tharsanan1/ai-helper/internal/worktree"
 )
 
@@ -16,6 +16,7 @@ var (
 	// Flags for switch command
 	switchClaudeMode string
 	switchClaudeArgs []string
+	switchOpenCode   bool
 )
 
 // switchCmd represents the switch command
@@ -31,7 +32,10 @@ Examples:
   ctl worktree switch feature-auth
 
   # Switch with custom Claude mode
-  ctl worktree switch feature-auth --claude-mode chat`,
+  ctl worktree switch feature-auth --claude-mode chat
+
+  # Switch and launch OpenCode instead of Claude
+  ctl worktree switch feature-auth --opencode`,
 	Args: cobra.ExactArgs(1),
 	RunE: runSwitch,
 }
@@ -39,6 +43,7 @@ Examples:
 func init() {
 	switchCmd.Flags().StringVar(&switchClaudeMode, "claude-mode", "", "Claude mode: chat, agent (default from config)")
 	switchCmd.Flags().StringSliceVar(&switchClaudeArgs, "claude-args", []string{}, "Additional arguments to pass to Claude CLI")
+	switchCmd.Flags().BoolVar(&switchOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
 }
 
 func runSwitch(cmd *cobra.Command, args []string) error {
@@ -80,38 +85,50 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Launch Claude
-	claudeLauncher := launcher.NewClaudeLauncher(cfg.Claude.CLIPath)
-
-	if !claudeLauncher.IsAvailable() {
-		return fmt.Errorf("Claude CLI not found. Please install it or specify the path in config")
-	}
-
-	// Prepare launch options
-	mode := switchClaudeMode
-	if mode == "" {
-		mode = cfg.Claude.DefaultMode
-	}
-
-	args = append(cfg.Claude.ExtraArgs, switchClaudeArgs...)
-
-	opts := launcher.LaunchOptions{
-		WorkDir:     worktreePath,
-		Args:        args,
-		Mode:        mode,
-		Interactive: launcher.IsTTY(),
-	}
-
-	if util.GlobalContext.IsColorEnabled() {
-		color.Cyan("Launching Claude Code CLI in %s...\n", worktreePath)
+	// Launch tool
+	if switchOpenCode {
+		if err := launchOpenCodeTool(worktreePath); err != nil {
+			if util.GlobalContext.IsColorEnabled() {
+				color.Yellow("Warning: failed to launch OpenCode: %v\n", err)
+			} else {
+				fmt.Printf("Warning: failed to launch OpenCode: %v\n", err)
+			}
+			return nil
+		}
 	} else {
-		fmt.Printf("Launching Claude Code CLI in %s...\n", worktreePath)
-	}
+		// Launch Claude
+		claudeLauncher := launcher.NewClaudeLauncher(cfg.Claude.CLIPath)
 
-	// Launch Claude
-	ctx := context.Background()
-	if err := claudeLauncher.Launch(ctx, opts); err != nil {
-		return fmt.Errorf("failed to launch Claude: %w", err)
+		if !claudeLauncher.IsAvailable() {
+			return fmt.Errorf("Claude CLI not found. Please install it or specify the path in config")
+		}
+
+		// Prepare launch options
+		mode := switchClaudeMode
+		if mode == "" {
+			mode = cfg.Claude.DefaultMode
+		}
+
+		args := append(cfg.Claude.ExtraArgs, switchClaudeArgs...)
+
+		opts := launcher.LaunchOptions{
+			WorkDir:     worktreePath,
+			Args:        args,
+			Mode:        mode,
+			Interactive: launcher.IsTTY(),
+		}
+
+		if util.GlobalContext.IsColorEnabled() {
+			color.Cyan("Launching Claude Code CLI in %s...\n", worktreePath)
+		} else {
+			fmt.Printf("Launching Claude Code CLI in %s...\n", worktreePath)
+		}
+
+		// Launch Claude
+		ctx := context.Background()
+		if err := claudeLauncher.Launch(ctx, opts); err != nil {
+			return fmt.Errorf("failed to launch Claude: %w", err)
+		}
 	}
 
 	return nil

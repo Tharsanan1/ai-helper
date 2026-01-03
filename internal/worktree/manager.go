@@ -41,6 +41,9 @@ type RemoveOptions struct {
 
 	// DeleteBranch indicates whether to delete the associated branch
 	DeleteBranch bool
+
+	// Force indicates whether to force remove the worktree
+	Force bool
 }
 
 // WorktreeInfo contains information about a worktree
@@ -197,7 +200,7 @@ func (m *Manager) Remove(opts RemoveOptions) error {
 	}
 
 	// Remove the worktree
-	if err := m.gitClient.RemoveWorktree(targetWorktree.Path); err != nil {
+	if err := m.gitClient.RemoveWorktree(targetWorktree.Path, opts.Force); err != nil {
 		return err
 	}
 

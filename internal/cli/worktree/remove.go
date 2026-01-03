@@ -5,14 +5,15 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/tharsanan1/ai-helper/internal/util"
 	"github.com/tharsanan1/ai-helper/internal/git"
+	"github.com/tharsanan1/ai-helper/internal/util"
 	"github.com/tharsanan1/ai-helper/internal/worktree"
 )
 
 var (
 	// Flags for remove command
 	removeDeleteBranch bool
+	removeForce        bool
 )
 
 // removeCmd represents the remove command
@@ -24,19 +25,24 @@ var removeCmd = &cobra.Command{
 
 The worktree directory will be removed from the filesystem.
 Use the --delete-branch flag to also delete the git branch.
+Use the --force flag to remove worktrees with modified or untracked files.
 
 Examples:
   # Remove worktree only
   ctl worktree remove feature-auth
 
   # Remove worktree and delete branch
-  ctl worktree remove feature-auth --delete-branch`,
+  ctl worktree remove feature-auth --delete-branch
+
+  # Force remove worktree with untracked files
+  ctl worktree remove feature-auth --force`,
 	Args: cobra.ExactArgs(1),
 	RunE: runRemove,
 }
 
 func init() {
 	removeCmd.Flags().BoolVarP(&removeDeleteBranch, "delete-branch", "d", false, "Also delete the associated git branch")
+	removeCmd.Flags().BoolVar(&removeForce, "force", false, "Force remove worktree even with modified or untracked files")
 }
 
 func runRemove(cmd *cobra.Command, args []string) error {
@@ -71,6 +77,7 @@ func runRemove(cmd *cobra.Command, args []string) error {
 	opts := worktree.RemoveOptions{
 		Name:         name,
 		DeleteBranch: deleteBranch,
+		Force:        removeForce,
 	}
 
 	// Print what we're doing if verbose

@@ -139,8 +139,12 @@ func (c *Client) ListWorktrees() ([]WorktreeInfo, error) {
 }
 
 // RemoveWorktree removes a worktree at the specified path
-func (c *Client) RemoveWorktree(path string) error {
-	cmd := exec.Command("git", "worktree", "remove", path)
+func (c *Client) RemoveWorktree(path string, force bool) error {
+	args := []string{"worktree", "remove", path}
+	if force {
+		args = append(args, "--force")
+	}
+	cmd := exec.Command("git", args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
