@@ -245,3 +245,7 @@ func getTerminalName(name string) string {
 	}
 	return name
 }
+
+func RunCreate(cmd *cobra.Command, args []string) error {
+	return runCreate(cmd, args)
+}

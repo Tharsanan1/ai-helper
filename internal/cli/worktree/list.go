@@ -87,3 +87,7 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
+
+func RunList(cmd *cobra.Command, args []string) error {
+	return runList(cmd, args)
+}

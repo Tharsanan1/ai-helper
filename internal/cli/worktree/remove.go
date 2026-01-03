@@ -49,6 +49,10 @@ func init() {
 	removeCmd.Flags().BoolVar(&removeForce, "force", false, "Force remove worktree even with modified or untracked files")
 }
 
+func RunRemove(cmd *cobra.Command, args []string) error {
+	return runRemove(cmd, args)
+}
+
 func runRemove(cmd *cobra.Command, args []string) error {
 	cfgManager, err := util.GlobalContext.GetConfigManager()
 	if err != nil {

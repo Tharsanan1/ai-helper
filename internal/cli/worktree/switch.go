@@ -144,3 +144,7 @@ func getSwitchTerminalName(name string) string {
 	}
 	return name
 }
+
+func RunSwitch(cmd *cobra.Command, args []string) error {
+	return runSwitch(cmd, args)
+}

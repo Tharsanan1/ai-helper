@@ -38,10 +38,7 @@ removing, and switching between git worktrees.`,
 		Example: `  aihelper c feature-auth
   aihelper c feature-auth -b auth/login`,
 		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			createCmd.SetArgs(args)
-			return createCmd.Execute()
-		},
+		RunE: RunCreate,
 	}
 
 	SwitchShortcutCmd = &cobra.Command{
@@ -51,10 +48,7 @@ removing, and switching between git worktrees.`,
 		Example: `  aihelper sw feature-auth
   aihelper sw feature-auth --claude-mode chat`,
 		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			switchCmd.SetArgs(args)
-			return switchCmd.Execute()
-		},
+		RunE: RunSwitch,
 	}
 
 	ListShortcutCmd = &cobra.Command{
@@ -62,22 +56,16 @@ removing, and switching between git worktrees.`,
 		Short: "List all worktrees",
 		Example: `  aihelper ls
   aihelper ls --verbose`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			listCmd.SetArgs(args)
-			return listCmd.Execute()
-		},
+		RunE: RunList,
 	}
 
 	RemoveShortcutCmd = &cobra.Command{
-		Use:     "rm <name> [<name>...]",
-		Aliases: []string{"del"},
+		Use:     "r <name> [<name>...]",
+		Aliases: []string{"rm", "del"},
 		Short:   "Remove worktrees",
-		Example: `  aihelper rm feature-auth
-  aihelper rm feature-auth --delete-branch`,
+		Example: `  aihelper r feature-auth
+  aihelper r feature-auth --delete-branch`,
 		Args: cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			removeCmd.SetArgs(args)
-			return removeCmd.Execute()
-		},
+		RunE: RunRemove,
 	}
 }
