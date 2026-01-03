@@ -69,6 +69,10 @@ func (o *OpenCodeLauncher) Launch(ctx context.Context, opts LaunchOptions) error
 		return fmt.Errorf("failed to start OpenCode: %w", err)
 	}
 
+	if opts.TerminalName != "" && opts.Interactive {
+		SetTerminalTitle(opts.TerminalName)
+	}
+
 	errChan := make(chan error, 1)
 	go func() {
 		errChan <- cmd.Wait()

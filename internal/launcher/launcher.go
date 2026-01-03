@@ -30,4 +30,7 @@ type LaunchOptions struct {
 
 	// Interactive determines if the tool should run interactively
 	Interactive bool
+
+	// TerminalName is the name to set for the terminal window
+	TerminalName string
 }

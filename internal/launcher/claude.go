@@ -96,6 +96,11 @@ func (c *ClaudeLauncher) Launch(ctx context.Context, opts LaunchOptions) error {
 		return fmt.Errorf("failed to start Claude: %w", err)
 	}
 
+	// Set terminal name if specified
+	if opts.TerminalName != "" && opts.Interactive {
+		SetTerminalTitle(opts.TerminalName)
+	}
+
 	// Wait for command to finish or signal
 	errChan := make(chan error, 1)
 	go func() {

@@ -14,9 +14,10 @@ import (
 
 var (
 	// Flags for switch command
-	switchClaudeMode string
-	switchClaudeArgs []string
-	switchOpenCode   bool
+	switchClaudeMode   string
+	switchClaudeArgs   []string
+	switchOpenCode     bool
+	switchTerminalName string
 )
 
 // switchCmd represents the switch command
@@ -44,6 +45,7 @@ func init() {
 	switchCmd.Flags().StringVar(&switchClaudeMode, "claude-mode", "", "Claude mode: chat, agent (default from config)")
 	switchCmd.Flags().StringSliceVar(&switchClaudeArgs, "claude-args", []string{}, "Additional arguments to pass to Claude CLI")
 	switchCmd.Flags().BoolVar(&switchOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
+	switchCmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 }
 
 func runSwitch(cmd *cobra.Command, args []string) error {
@@ -87,7 +89,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 
 	// Launch tool
 	if switchOpenCode {
-		if err := launchOpenCodeTool(worktreePath); err != nil {
+		if err := launchOpenCodeTool(worktreePath, name); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch OpenCode: %v\n", err)
 			} else {
@@ -112,10 +114,11 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 		args := append(cfg.Claude.ExtraArgs, switchClaudeArgs...)
 
 		opts := launcher.LaunchOptions{
-			WorkDir:     worktreePath,
-			Args:        args,
-			Mode:        mode,
-			Interactive: launcher.IsTTY(),
+			WorkDir:      worktreePath,
+			Args:         args,
+			Mode:         mode,
+			Interactive:  launcher.IsTTY(),
+			TerminalName: getSwitchTerminalName(name),
 		}
 
 		if util.GlobalContext.IsColorEnabled() {
@@ -132,4 +135,11 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func getSwitchTerminalName(name string) string {
+	if switchTerminalName != "" {
+		return switchTerminalName
+	}
+	return name
 }

@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"fmt"
 	"os"
 
 	"golang.org/x/term"
@@ -18,4 +19,9 @@ func GetShell() string {
 		shell = "/bin/sh"
 	}
 	return shell
+}
+
+// SetTerminalTitle sets the terminal window title
+func SetTerminalTitle(title string) {
+	fmt.Fprintf(os.Stderr, "\033]0;%s\007", title)
 }

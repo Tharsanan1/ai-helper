@@ -23,6 +23,7 @@ var (
 	createClaudeArgs     []string
 	createExistingBranch bool
 	createOpenCode       bool
+	createTerminalName   string
 )
 
 // createCmd represents the create command
@@ -67,6 +68,7 @@ func init() {
 	createCmd.Flags().StringSliceVar(&createClaudeArgs, "claude-args", []string{}, "Additional arguments to pass to Claude CLI")
 	createCmd.Flags().BoolVarP(&createExistingBranch, "existing-branch", "e", false, "Use existing branch instead of creating new")
 	createCmd.Flags().BoolVar(&createOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
+	createCmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
@@ -135,7 +137,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	launchOpenCode := createOpenCode
 
 	if launchOpenCode {
-		if err := launchOpenCodeTool(worktreePath); err != nil {
+		if err := launchOpenCodeTool(worktreePath, name); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch OpenCode: %v\n", err)
 			} else {
@@ -144,7 +146,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 	} else if launchClaude {
-		if err := launchClaudeTool(worktreePath, cfg); err != nil {
+		if err := launchClaudeTool(worktreePath, name, cfg); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch Claude: %v\n", err)
 			} else {
@@ -157,7 +159,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func launchOpenCodeTool(worktreePath string) error {
+func launchOpenCodeTool(worktreePath string, terminalName string) error {
 	opencodeLauncher := launcher.NewOpenCodeLauncher("")
 
 	if !opencodeLauncher.IsAvailable() {
@@ -165,8 +167,9 @@ func launchOpenCodeTool(worktreePath string) error {
 	}
 
 	opts := launcher.LaunchOptions{
-		WorkDir:     worktreePath,
-		Interactive: launcher.IsTTY(),
+		WorkDir:      worktreePath,
+		Interactive:  launcher.IsTTY(),
+		TerminalName: getTerminalName(terminalName),
 	}
 
 	if util.GlobalContext.IsVerbose() {
@@ -187,7 +190,7 @@ func launchOpenCodeTool(worktreePath string) error {
 	return nil
 }
 
-func launchClaudeTool(worktreePath string, cfg *config.Config) error {
+func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Config) error {
 	// Create Claude launcher
 	claudeLauncher := launcher.NewClaudeLauncher(cfg.Claude.CLIPath)
 
@@ -205,10 +208,11 @@ func launchClaudeTool(worktreePath string, cfg *config.Config) error {
 	args := append(cfg.Claude.ExtraArgs, createClaudeArgs...)
 
 	opts := launcher.LaunchOptions{
-		WorkDir:     worktreePath,
-		Args:        args,
-		Mode:        mode,
-		Interactive: launcher.IsTTY(),
+		WorkDir:      worktreePath,
+		Args:         args,
+		Mode:         mode,
+		Interactive:  launcher.IsTTY(),
+		TerminalName: getTerminalName(terminalName),
 	}
 
 	// Print what we're doing
@@ -232,4 +236,11 @@ func launchClaudeTool(worktreePath string, cfg *config.Config) error {
 	}
 
 	return nil
+}
+
+func getTerminalName(name string) string {
+	if createTerminalName != "" {
+		return createTerminalName
+	}
+	return name
 }
