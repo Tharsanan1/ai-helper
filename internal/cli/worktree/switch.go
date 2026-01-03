@@ -17,6 +17,7 @@ var (
 	switchClaudeMode   string
 	switchClaudeArgs   []string
 	switchOpenCode     bool
+	switchGemini       bool
 	switchTerminalName string
 )
 
@@ -37,7 +38,10 @@ Examples:
   ctl worktree switch feature-auth --claude-mode chat
 
   # Switch and launch OpenCode instead of Claude
-  ctl worktree switch feature-auth --opencode`,
+  ctl worktree switch feature-auth --opencode
+
+  # Switch and launch Gemini CLI instead of Claude
+  ctl worktree switch feature-auth --gemini`,
 	Args: cobra.ExactArgs(1),
 	RunE: runSwitch,
 }
@@ -46,6 +50,7 @@ func init() {
 	switchCmd.Flags().StringVar(&switchClaudeMode, "claude-mode", "", "Claude mode: chat, agent (default from config)")
 	switchCmd.Flags().StringSliceVar(&switchClaudeArgs, "claude-args", []string{}, "Additional arguments to pass to Claude CLI")
 	switchCmd.Flags().BoolVar(&switchOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
+	switchCmd.Flags().BoolVar(&switchGemini, "gemini", false, "Launch Gemini CLI instead of Claude")
 	switchCmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 }
 
@@ -98,6 +103,15 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			}
 			return nil
 		}
+	} else if switchGemini {
+		if err := launchGeminiToolForSwitch(worktreePath, name); err != nil {
+			if util.GlobalContext.IsColorEnabled() {
+				color.Yellow("Warning: failed to launch Gemini: %v\n", err)
+			} else {
+				fmt.Printf("Warning: failed to launch Gemini: %v\n", err)
+			}
+			return nil
+		}
 	} else {
 		// Launch Claude
 		claudeLauncher := launcher.NewClaudeLauncher(cfg.Claude.CLIPath)
@@ -143,6 +157,37 @@ func getSwitchTerminalName(name string) string {
 		return switchTerminalName
 	}
 	return name
+}
+
+func launchGeminiToolForSwitch(worktreePath string, terminalName string) error {
+	geminiLauncher := launcher.NewGeminiLauncher("")
+
+	if !geminiLauncher.IsAvailable() {
+		return fmt.Errorf("Gemini CLI not found. Please install it")
+	}
+
+	opts := launcher.LaunchOptions{
+		WorkDir:      worktreePath,
+		Interactive:  launcher.IsTTY(),
+		TerminalName: getSwitchTerminalName(terminalName),
+	}
+
+	if util.GlobalContext.IsVerbose() {
+		fmt.Printf("Launching Gemini in %s...\n", worktreePath)
+	}
+
+	if util.GlobalContext.IsColorEnabled() {
+		color.Cyan("Launching Gemini...\n")
+	} else {
+		fmt.Println("Launching Gemini...")
+	}
+
+	ctx := context.Background()
+	if err := geminiLauncher.Launch(ctx, opts); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func RunSwitch(cmd *cobra.Command, args []string) error {

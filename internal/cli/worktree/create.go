@@ -23,6 +23,7 @@ var (
 	createClaudeArgs     []string
 	createExistingBranch bool
 	createOpenCode       bool
+	createGemini         bool
 	createTerminalName   string
 )
 
@@ -55,7 +56,10 @@ Examples:
   ctl worktree create feature-x -b existing-branch --existing-branch
 
   # Create worktree and launch OpenCode instead of Claude
-  ctl worktree create feature-x --opencode`,
+  ctl worktree create feature-x --opencode
+
+  # Create worktree and launch Gemini CLI instead of Claude
+  ctl worktree create feature-x --gemini`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCreate,
 }
@@ -69,6 +73,7 @@ func init() {
 	createCmd.Flags().StringSliceVar(&createClaudeArgs, "claude-args", []string{}, "Additional arguments to pass to Claude CLI")
 	createCmd.Flags().BoolVarP(&createExistingBranch, "existing-branch", "e", false, "Use existing branch instead of creating new")
 	createCmd.Flags().BoolVar(&createOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
+	createCmd.Flags().BoolVar(&createGemini, "gemini", false, "Launch Gemini CLI instead of Claude")
 	createCmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 }
 
@@ -134,8 +139,9 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Launch tool if enabled
-	launchClaude := !createNoClaude && cfg.Claude.AutoLaunch && !createOpenCode
+	launchClaude := !createNoClaude && cfg.Claude.AutoLaunch && !createOpenCode && !createGemini
 	launchOpenCode := createOpenCode
+	launchGemini := createGemini
 
 	if launchOpenCode {
 		if err := launchOpenCodeTool(worktreePath, name); err != nil {
@@ -143,6 +149,15 @@ func runCreate(cmd *cobra.Command, args []string) error {
 				color.Yellow("Warning: failed to launch OpenCode: %v\n", err)
 			} else {
 				fmt.Printf("Warning: failed to launch OpenCode: %v\n", err)
+			}
+			return nil
+		}
+	} else if launchGemini {
+		if err := launchGeminiTool(worktreePath, getTerminalName(name)); err != nil {
+			if util.GlobalContext.IsColorEnabled() {
+				color.Yellow("Warning: failed to launch Gemini: %v\n", err)
+			} else {
+				fmt.Printf("Warning: failed to launch Gemini: %v\n", err)
 			}
 			return nil
 		}
@@ -185,6 +200,37 @@ func launchOpenCodeTool(worktreePath string, terminalName string) error {
 
 	ctx := context.Background()
 	if err := opencodeLauncher.Launch(ctx, opts); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func launchGeminiTool(worktreePath string, terminalName string) error {
+	geminiLauncher := launcher.NewGeminiLauncher("")
+
+	if !geminiLauncher.IsAvailable() {
+		return fmt.Errorf("Gemini CLI not found. Please install it")
+	}
+
+	opts := launcher.LaunchOptions{
+		WorkDir:      worktreePath,
+		Interactive:  launcher.IsTTY(),
+		TerminalName: terminalName,
+	}
+
+	if util.GlobalContext.IsVerbose() {
+		fmt.Printf("Launching Gemini in %s...\n", worktreePath)
+	}
+
+	if util.GlobalContext.IsColorEnabled() {
+		color.Cyan("Launching Gemini...\n")
+	} else {
+		fmt.Println("Launching Gemini...")
+	}
+
+	ctx := context.Background()
+	if err := geminiLauncher.Launch(ctx, opts); err != nil {
 		return err
 	}
 
