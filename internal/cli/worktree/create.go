@@ -64,17 +64,22 @@ Examples:
 	RunE: runCreate,
 }
 
+// RegisterCreateFlags registers flags for the create command
+func RegisterCreateFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&createBranch, "branch", "b", "", "Branch name (default: same as worktree name)")
+	cmd.Flags().StringVarP(&createLocation, "location", "l", "", "Base directory for worktrees (default from config)")
+	cmd.Flags().StringVarP(&createFrom, "from", "f", "", "Source branch to create from (default: current branch)")
+	cmd.Flags().BoolVar(&createNoClaude, "no-claude", false, "Create worktree without launching Claude")
+	cmd.Flags().StringVar(&createClaudeMode, "claude-mode", "", "Claude mode: chat, agent (default from config)")
+	cmd.Flags().StringSliceVar(&createClaudeArgs, "claude-args", []string{}, "Additional arguments to pass to Claude CLI")
+	cmd.Flags().BoolVarP(&createExistingBranch, "existing-branch", "e", false, "Use existing branch instead of creating new")
+	cmd.Flags().BoolVar(&createOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
+	cmd.Flags().BoolVar(&createGemini, "gemini", false, "Launch Gemini CLI instead of Claude")
+	cmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
+}
+
 func init() {
-	createCmd.Flags().StringVarP(&createBranch, "branch", "b", "", "Branch name (default: same as worktree name)")
-	createCmd.Flags().StringVarP(&createLocation, "location", "l", "", "Base directory for worktrees (default from config)")
-	createCmd.Flags().StringVarP(&createFrom, "from", "f", "", "Source branch to create from (default: current branch)")
-	createCmd.Flags().BoolVar(&createNoClaude, "no-claude", false, "Create worktree without launching Claude")
-	createCmd.Flags().StringVar(&createClaudeMode, "claude-mode", "", "Claude mode: chat, agent (default from config)")
-	createCmd.Flags().StringSliceVar(&createClaudeArgs, "claude-args", []string{}, "Additional arguments to pass to Claude CLI")
-	createCmd.Flags().BoolVarP(&createExistingBranch, "existing-branch", "e", false, "Use existing branch instead of creating new")
-	createCmd.Flags().BoolVar(&createOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
-	createCmd.Flags().BoolVar(&createGemini, "gemini", false, "Launch Gemini CLI instead of Claude")
-	createCmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
+	RegisterCreateFlags(createCmd)
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {

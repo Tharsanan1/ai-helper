@@ -68,4 +68,9 @@ removing, and switching between git worktrees.`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: RunRemove,
 	}
+
+	// Register flags for shortcuts
+	RegisterCreateFlags(CreateShortcutCmd)
+	RegisterSwitchFlags(SwitchShortcutCmd)
+	RegisterRemoveFlags(RemoveShortcutCmd)
 }

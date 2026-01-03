@@ -46,12 +46,17 @@ Examples:
 	RunE: runSwitch,
 }
 
+// RegisterSwitchFlags registers flags for the switch command
+func RegisterSwitchFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&switchClaudeMode, "claude-mode", "", "Claude mode: chat, agent (default from config)")
+	cmd.Flags().StringSliceVar(&switchClaudeArgs, "claude-args", []string{}, "Additional arguments to pass to Claude CLI")
+	cmd.Flags().BoolVar(&switchOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
+	cmd.Flags().BoolVar(&switchGemini, "gemini", false, "Launch Gemini CLI instead of Claude")
+	cmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
+}
+
 func init() {
-	switchCmd.Flags().StringVar(&switchClaudeMode, "claude-mode", "", "Claude mode: chat, agent (default from config)")
-	switchCmd.Flags().StringSliceVar(&switchClaudeArgs, "claude-args", []string{}, "Additional arguments to pass to Claude CLI")
-	switchCmd.Flags().BoolVar(&switchOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
-	switchCmd.Flags().BoolVar(&switchGemini, "gemini", false, "Launch Gemini CLI instead of Claude")
-	switchCmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
+	RegisterSwitchFlags(switchCmd)
 }
 
 func runSwitch(cmd *cobra.Command, args []string) error {

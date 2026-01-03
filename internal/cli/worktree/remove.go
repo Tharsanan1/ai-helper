@@ -44,9 +44,14 @@ Examples:
 	RunE: runRemove,
 }
 
+// RegisterRemoveFlags registers flags for the remove command
+func RegisterRemoveFlags(cmd *cobra.Command) {
+	cmd.Flags().BoolVarP(&removeDeleteBranch, "delete-branch", "d", false, "Also delete the associated git branch")
+	cmd.Flags().BoolVar(&removeForce, "force", false, "Force remove worktree even with modified or untracked files")
+}
+
 func init() {
-	removeCmd.Flags().BoolVarP(&removeDeleteBranch, "delete-branch", "d", false, "Also delete the associated git branch")
-	removeCmd.Flags().BoolVar(&removeForce, "force", false, "Force remove worktree even with modified or untracked files")
+	RegisterRemoveFlags(removeCmd)
 }
 
 func RunRemove(cmd *cobra.Command, args []string) error {
