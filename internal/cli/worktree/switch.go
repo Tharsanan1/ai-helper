@@ -18,6 +18,7 @@ var (
 	switchClaudeArgs   []string
 	switchOpenCode     bool
 	switchGemini       bool
+	switchDroid        bool
 	switchTerminalName string
 )
 
@@ -41,7 +42,10 @@ Examples:
   ctl worktree switch feature-auth --opencode
 
   # Switch and launch Gemini CLI instead of Claude
-  ctl worktree switch feature-auth --gemini`,
+  ctl worktree switch feature-auth --gemini
+
+  # Switch and launch Droid CLI instead of Claude
+  ctl worktree switch feature-auth --droid`,
 	Args: cobra.ExactArgs(1),
 	RunE: runSwitch,
 }
@@ -52,6 +56,7 @@ func RegisterSwitchFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSliceVar(&switchClaudeArgs, "claude-args", []string{}, "Additional arguments to pass to Claude CLI")
 	cmd.Flags().BoolVar(&switchOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
 	cmd.Flags().BoolVar(&switchGemini, "gemini", false, "Launch Gemini CLI instead of Claude")
+	cmd.Flags().BoolVar(&switchDroid, "droid", false, "Launch Droid CLI instead of Claude")
 	cmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 }
 
@@ -114,6 +119,15 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 				color.Yellow("Warning: failed to launch Gemini: %v\n", err)
 			} else {
 				fmt.Printf("Warning: failed to launch Gemini: %v\n", err)
+			}
+			return nil
+		}
+	} else if switchDroid {
+		if err := launchDroidToolForSwitch(worktreePath, name); err != nil {
+			if util.GlobalContext.IsColorEnabled() {
+				color.Yellow("Warning: failed to launch Droid: %v\n", err)
+			} else {
+				fmt.Printf("Warning: failed to launch Droid: %v\n", err)
 			}
 			return nil
 		}
@@ -189,6 +203,37 @@ func launchGeminiToolForSwitch(worktreePath string, terminalName string) error {
 
 	ctx := context.Background()
 	if err := geminiLauncher.Launch(ctx, opts); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func launchDroidToolForSwitch(worktreePath string, terminalName string) error {
+	droidLauncher := launcher.NewDroidLauncher("")
+
+	if !droidLauncher.IsAvailable() {
+		return fmt.Errorf("Droid CLI not found. Please install it")
+	}
+
+	opts := launcher.LaunchOptions{
+		WorkDir:      worktreePath,
+		Interactive:  launcher.IsTTY(),
+		TerminalName: getSwitchTerminalName(terminalName),
+	}
+
+	if util.GlobalContext.IsVerbose() {
+		fmt.Printf("Launching Droid in %s...\n", worktreePath)
+	}
+
+	if util.GlobalContext.IsColorEnabled() {
+		color.Cyan("Launching Droid...\n")
+	} else {
+		fmt.Println("Launching Droid...")
+	}
+
+	ctx := context.Background()
+	if err := droidLauncher.Launch(ctx, opts); err != nil {
 		return err
 	}
 

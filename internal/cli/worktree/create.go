@@ -24,6 +24,7 @@ var (
 	createExistingBranch bool
 	createOpenCode       bool
 	createGemini         bool
+	createDroid          bool
 	createTerminalName   string
 )
 
@@ -59,7 +60,10 @@ Examples:
   ctl worktree create feature-x --opencode
 
   # Create worktree and launch Gemini CLI instead of Claude
-  ctl worktree create feature-x --gemini`,
+  ctl worktree create feature-x --gemini
+
+  # Create worktree and launch Droid CLI instead of Claude
+  ctl worktree create feature-x --droid`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCreate,
 }
@@ -75,6 +79,7 @@ func RegisterCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&createExistingBranch, "existing-branch", "e", false, "Use existing branch instead of creating new")
 	cmd.Flags().BoolVar(&createOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
 	cmd.Flags().BoolVar(&createGemini, "gemini", false, "Launch Gemini CLI instead of Claude")
+	cmd.Flags().BoolVar(&createDroid, "droid", false, "Launch Droid CLI instead of Claude")
 	cmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 }
 
@@ -144,9 +149,10 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Launch tool if enabled
-	launchClaude := !createNoClaude && cfg.Claude.AutoLaunch && !createOpenCode && !createGemini
+	launchClaude := !createNoClaude && cfg.Claude.AutoLaunch && !createOpenCode && !createGemini && !createDroid
 	launchOpenCode := createOpenCode
 	launchGemini := createGemini
+	launchDroid := createDroid
 
 	if launchOpenCode {
 		if err := launchOpenCodeTool(worktreePath, name); err != nil {
@@ -163,6 +169,15 @@ func runCreate(cmd *cobra.Command, args []string) error {
 				color.Yellow("Warning: failed to launch Gemini: %v\n", err)
 			} else {
 				fmt.Printf("Warning: failed to launch Gemini: %v\n", err)
+			}
+			return nil
+		}
+	} else if launchDroid {
+		if err := launchDroidTool(worktreePath, getTerminalName(name)); err != nil {
+			if util.GlobalContext.IsColorEnabled() {
+				color.Yellow("Warning: failed to launch Droid: %v\n", err)
+			} else {
+				fmt.Printf("Warning: failed to launch Droid: %v\n", err)
 			}
 			return nil
 		}
@@ -236,6 +251,37 @@ func launchGeminiTool(worktreePath string, terminalName string) error {
 
 	ctx := context.Background()
 	if err := geminiLauncher.Launch(ctx, opts); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func launchDroidTool(worktreePath string, terminalName string) error {
+	droidLauncher := launcher.NewDroidLauncher("")
+
+	if !droidLauncher.IsAvailable() {
+		return fmt.Errorf("Droid CLI not found. Please install it")
+	}
+
+	opts := launcher.LaunchOptions{
+		WorkDir:      worktreePath,
+		Interactive:  launcher.IsTTY(),
+		TerminalName: terminalName,
+	}
+
+	if util.GlobalContext.IsVerbose() {
+		fmt.Printf("Launching Droid in %s...\n", worktreePath)
+	}
+
+	if util.GlobalContext.IsColorEnabled() {
+		color.Cyan("Launching Droid...\n")
+	} else {
+		fmt.Println("Launching Droid...")
+	}
+
+	ctx := context.Background()
+	if err := droidLauncher.Launch(ctx, opts); err != nil {
 		return err
 	}
 
