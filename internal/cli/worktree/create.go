@@ -26,6 +26,7 @@ var (
 	createGemini         bool
 	createDroid          bool
 	createCopilot        bool
+	createClaude         bool
 	createTerminalName   string
 	createNewTerminal    bool
 )
@@ -71,7 +72,8 @@ Examples:
   aihelper worktree create feature-x --droid
 
   # Create worktree and launch Copilot CLI instead of Claude
-  aihelper worktree create feature-x --copilot`,
+   # Create worktree and launch Claude (explicitly)
+   aihelper worktree create feature-x --claude  aihelper worktree create feature-x --copilot`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCreate,
 }
@@ -89,6 +91,7 @@ func RegisterCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&createGemini, "gemini", false, "Launch Gemini CLI instead of Claude")
 	cmd.Flags().BoolVar(&createDroid, "droid", false, "Launch Droid CLI instead of Claude")
 	cmd.Flags().BoolVar(&createCopilot, "copilot", false, "Launch Copilot CLI instead of Claude")
+	cmd.Flags().BoolVar(&createClaude, "claude", false, "Launch Claude (explicitly, useful for overriding defaults)")
 	cmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 	cmd.Flags().BoolVar(&createNewTerminal, "new-terminal", false, "Launch agent in a new terminal window")
 }
@@ -158,12 +161,34 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Created worktree at: %s\n", worktreePath)
 	}
 
-	// Launch tool if enabled
-	launchClaude := !createNoClaude && cfg.Claude.AutoLaunch && !createOpenCode && !createGemini && !createDroid && !createCopilot
+	// Determine which CLI to launch
+	// Priority: explicit flags > default CLI > claude (if auto-launch enabled)
 	launchOpenCode := createOpenCode
 	launchGemini := createGemini
 	launchDroid := createDroid
 	launchCopilot := createCopilot
+	launchClaude := createClaude
+
+	// If no explicit flag is set and not --no-claude, determine based on default CLI
+	if !createNoClaude && !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude {
+		defaultCLI := cfg.Global.DefaultCLI
+		if defaultCLI == "" {
+			defaultCLI = "claude"
+		}
+
+		switch defaultCLI {
+		case "gemini":
+			launchGemini = true
+		case "copilot":
+			launchCopilot = true
+		case "droid":
+			launchDroid = true
+		case "opencode":
+			launchOpenCode = true
+		default: // claude
+			launchClaude = cfg.Claude.AutoLaunch
+		}
+	}
 
 	if launchOpenCode {
 		if err := launchOpenCodeTool(worktreePath, name); err != nil {

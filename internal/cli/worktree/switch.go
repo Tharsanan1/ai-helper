@@ -20,6 +20,7 @@ var (
 	switchGemini       bool
 	switchDroid        bool
 	switchCopilot      bool
+	switchClaude       bool
 	switchTerminalName string
 )
 
@@ -49,7 +50,8 @@ Examples:
   aihelper worktree switch feature-auth --droid
 
   # Switch and launch Copilot CLI instead of Claude
-  aihelper worktree switch feature-auth --copilot`,
+   # Switch and launch Claude (explicitly)
+   aihelper worktree switch feature-auth --claude  aihelper worktree switch feature-auth --copilot`,
 	Args: cobra.ExactArgs(1),
 	RunE: runSwitch,
 }
@@ -62,6 +64,7 @@ func RegisterSwitchFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&switchGemini, "gemini", false, "Launch Gemini CLI instead of Claude")
 	cmd.Flags().BoolVar(&switchDroid, "droid", false, "Launch Droid CLI instead of Claude")
 	cmd.Flags().BoolVar(&switchCopilot, "copilot", false, "Launch Copilot CLI instead of Claude")
+	cmd.Flags().BoolVar(&switchClaude, "claude", false, "Launch Claude (explicitly, useful for overriding defaults)")
 	cmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 }
 
@@ -108,8 +111,35 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Launch tool
-	if switchOpenCode {
+	// Launch tool based on flags or default CLI
+	launchOpenCode := switchOpenCode
+	launchGemini := switchGemini
+	launchDroid := switchDroid
+	launchCopilot := switchCopilot
+	launchClaude := switchClaude
+
+	// If no explicit flag is set, determine based on default CLI
+	if !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude {
+		defaultCLI := cfg.Global.DefaultCLI
+		if defaultCLI == "" {
+			defaultCLI = "claude"
+		}
+
+		switch defaultCLI {
+		case "gemini":
+			launchGemini = true
+		case "copilot":
+			launchCopilot = true
+		case "droid":
+			launchDroid = true
+		case "opencode":
+			launchOpenCode = true
+		default: // claude
+			launchClaude = true
+		}
+	}
+
+	if launchOpenCode {
 		if err := launchOpenCodeTool(worktreePath, name); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch OpenCode: %v\n", err)
@@ -118,7 +148,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			}
 			return nil
 		}
-	} else if switchGemini {
+	} else if launchGemini {
 		if err := launchGeminiToolForSwitch(worktreePath, name); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch Gemini: %v\n", err)
@@ -127,7 +157,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			}
 			return nil
 		}
-	} else if switchDroid {
+	} else if launchDroid {
 		if err := launchDroidToolForSwitch(worktreePath, name); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch Droid: %v\n", err)
@@ -136,7 +166,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			}
 			return nil
 		}
-	} else if switchCopilot {
+	} else if launchCopilot {
 		if err := launchCopilotToolForSwitch(worktreePath, name); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch Copilot: %v\n", err)
@@ -145,7 +175,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			}
 			return nil
 		}
-	} else {
+	} else if launchClaude {
 		// Launch Claude
 		claudeLauncher := launcher.NewClaudeLauncher(cfg.Claude.CLIPath)
 

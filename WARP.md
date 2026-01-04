@@ -122,7 +122,7 @@ This is a Go CLI tool that manages Git worktrees and launches AI/dev CLIs (Claud
     - Defines the typed configuration model:
       - `WorktreeConfig` – `base_location`, `auto_cleanup`, `default_source_branch`.
       - `ClaudeConfig` – `default_mode` (`agent`/`chat`), `auto_launch`, `extra_args`, `cli_path`.
-      - `GlobalConfig` – `verbosity`, `color`, `editor`.
+      - `GlobalConfig` – `verbosity`, `color`, `editor`, `default_cli` (which AI CLI to launch: `claude`, `gemini`, `copilot`, `droid`, `opencode`).
     - `DefaultConfig()` centralizes all default values used across the app.
   - `config.go`
     - `Manager` wraps a dedicated `viper.Viper` instance and provides typed getters and mutation.

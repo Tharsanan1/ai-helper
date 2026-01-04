@@ -184,6 +184,9 @@ global:
 
   # Editor for opening files
   editor: ""
+
+  # Default CLI to launch (claude, gemini, copilot, droid, opencode)
+  default_cli: "claude"
 ```
 
 ### Manage Configuration
@@ -199,6 +202,42 @@ ctl config get worktree.base_location
 ctl config set claude.auto_launch false
 ctl config set worktree.base_location /custom/path
 ```
+
+### Switching Between AI CLIs
+
+By default, `ctl` launches Claude. You can use other AI tools or configure a default:
+
+**Command-line flags** (override defaults):
+```bash
+# Launch Gemini
+ctl worktree create feature-x --gemini
+
+# Launch Copilot
+ctl worktree create feature-x --copilot
+
+# Launch Droid
+ctl worktree create feature-x --droid
+
+# Launch OpenCode
+ctl worktree create feature-x --opencode
+
+# Explicitly launch Claude (useful for overriding config defaults)
+ctl worktree create feature-x --claude
+```
+
+**Configuration-based default** (applies to both `create` and `switch` commands):
+```bash
+# Set default CLI to Gemini
+ctl config set global.default_cli gemini
+
+# Set default CLI to Copilot
+ctl config set global.default_cli copilot
+
+# Reset to Claude (default)
+ctl config set global.default_cli claude
+```
+
+Supported values for `global.default_cli`: `claude`, `gemini`, `copilot`, `droid`, `opencode`
 
 ## Command Reference
 
@@ -220,8 +259,13 @@ Create a new git worktree.
 - `-l, --location <path>`: Base directory for worktrees
 - `-f, --from <branch>`: Source branch to create from (default: current branch)
 - `--no-claude`: Don't launch Claude after creation
+- `--claude`: Explicitly launch Claude (useful for overriding `default_cli` config)
 - `--claude-mode <mode>`: Claude mode (agent|chat)
 - `--claude-args <args>`: Additional Claude CLI arguments
+- `--gemini`: Launch Gemini CLI instead of Claude
+- `--copilot`: Launch Copilot CLI instead of Claude
+- `--droid`: Launch Droid CLI instead of Claude
+- `--opencode`: Launch OpenCode instead of Claude
 - `-e, --existing-branch`: Use existing branch instead of creating new
 
 **Examples:**
@@ -265,11 +309,16 @@ ctl worktree remove feature-payment -d
 
 #### `ctl worktree switch <name> [flags]`
 
-Switch to an existing worktree and launch Claude.
+Switch to an existing worktree and launch Claude (or other AI CLI based on config).
 
 **Flags:**
+- `--claude`: Explicitly launch Claude (useful for overriding `default_cli` config)
 - `--claude-mode <mode>`: Claude mode (agent|chat)
 - `--claude-args <args>`: Additional Claude CLI arguments
+- `--gemini`: Launch Gemini CLI instead of Claude
+- `--copilot`: Launch Copilot CLI instead of Claude
+- `--droid`: Launch Droid CLI instead of Claude
+- `--opencode`: Launch OpenCode instead of Claude
 
 ### Config Commands
 

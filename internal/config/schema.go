@@ -44,6 +44,9 @@ type GlobalConfig struct {
 
 	// Editor for opening files (fallback to $EDITOR)
 	Editor string `mapstructure:"editor" yaml:"editor"`
+
+	// DefaultCLI is the default CLI to use when launching (claude, gemini, copilot, droid, opencode)
+	DefaultCLI string `mapstructure:"default_cli" yaml:"default_cli"`
 }
 
 // DefaultConfig returns the default configuration
@@ -61,9 +64,10 @@ func DefaultConfig() *Config {
 			CLIPath:     "", // Auto-detect
 		},
 		Global: GlobalConfig{
-			Verbosity: 1,
-			Color:     true,
-			Editor:    "",
+			Verbosity:  1,
+			Color:      true,
+			Editor:     "",
+			DefaultCLI: "claude",
 		},
 	}
 }
