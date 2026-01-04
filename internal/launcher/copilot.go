@@ -45,6 +45,21 @@ func (c *CopilotLauncher) Launch(ctx context.Context, opts LaunchOptions) error 
 
 	path := c.getCLIPath()
 
+	// If NewTerminal is true, open in a new terminal window
+	if opts.NewTerminal {
+		args := []string{}
+		args = append(args, opts.Args...)
+		
+		// Use simple command name for new terminal to avoid path escaping issues
+		command := fmt.Sprintf("copilot %s", joinArgsForShell(args))
+		terminalName := opts.TerminalName
+		if terminalName == "" {
+			terminalName = "Copilot CLI"
+		}
+		
+		return OpenInNewTerminal(opts.WorkDir, command, terminalName)
+	}
+
 	args := []string{}
 	args = append(args, opts.Args...)
 

@@ -27,6 +27,7 @@ var (
 	createDroid          bool
 	createCopilot        bool
 	createTerminalName   string
+	createNewTerminal    bool
 )
 
 // createCmd represents the create command
@@ -44,6 +45,9 @@ The create command will:
 Examples:
   # Create a worktree and launch Claude
   aihelper worktree create feature-auth
+
+  # Create and launch agent in a new terminal window
+  aihelper worktree create feature-auth --copilot --new-terminal
 
   # Create with custom branch name
   aihelper worktree create feature-auth -b auth/login
@@ -86,6 +90,7 @@ func RegisterCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&createDroid, "droid", false, "Launch Droid CLI instead of Claude")
 	cmd.Flags().BoolVar(&createCopilot, "copilot", false, "Launch Copilot CLI instead of Claude")
 	cmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
+	cmd.Flags().BoolVar(&createNewTerminal, "new-terminal", false, "Launch agent in a new terminal window")
 }
 
 func init() {
@@ -221,6 +226,7 @@ func launchOpenCodeTool(worktreePath string, terminalName string) error {
 		WorkDir:      worktreePath,
 		Interactive:  launcher.IsTTY(),
 		TerminalName: getTerminalName(terminalName),
+		NewTerminal:  createNewTerminal,
 	}
 
 	if util.GlobalContext.IsVerbose() {
@@ -252,6 +258,7 @@ func launchGeminiTool(worktreePath string, terminalName string) error {
 		WorkDir:      worktreePath,
 		Interactive:  launcher.IsTTY(),
 		TerminalName: terminalName,
+		NewTerminal:  createNewTerminal,
 	}
 
 	if util.GlobalContext.IsVerbose() {
@@ -283,6 +290,7 @@ func launchDroidTool(worktreePath string, terminalName string) error {
 		WorkDir:      worktreePath,
 		Interactive:  launcher.IsTTY(),
 		TerminalName: terminalName,
+		NewTerminal:  createNewTerminal,
 	}
 
 	if util.GlobalContext.IsVerbose() {
@@ -314,6 +322,7 @@ func launchCopilotTool(worktreePath string, terminalName string) error {
 		WorkDir:      worktreePath,
 		Interactive:  launcher.IsTTY(),
 		TerminalName: terminalName,
+		NewTerminal:  createNewTerminal,
 	}
 
 	if util.GlobalContext.IsVerbose() {
@@ -357,6 +366,7 @@ func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Conf
 		Mode:         mode,
 		Interactive:  launcher.IsTTY(),
 		TerminalName: getTerminalName(terminalName),
+		NewTerminal:  createNewTerminal,
 	}
 
 	// Print what we're doing

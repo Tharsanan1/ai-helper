@@ -70,6 +70,17 @@ func (c *ClaudeLauncher) Launch(ctx context.Context, opts LaunchOptions) error {
 	// Add additional arguments
 	args = append(args, opts.Args...)
 
+	// If NewTerminal is true, open in a new terminal window
+	if opts.NewTerminal {
+		command := fmt.Sprintf("claude %s", joinArgsForShell(args))
+		terminalName := opts.TerminalName
+		if terminalName == "" {
+			terminalName = "Claude CLI"
+		}
+		
+		return OpenInNewTerminal(opts.WorkDir, command, terminalName)
+	}
+
 	// Create command
 	cmd := exec.CommandContext(ctx, path, args...)
 	cmd.Dir = opts.WorkDir

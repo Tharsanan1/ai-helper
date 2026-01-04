@@ -48,6 +48,17 @@ func (d *DroidLauncher) Launch(ctx context.Context, opts LaunchOptions) error {
 	args := []string{}
 	args = append(args, opts.Args...)
 
+	// If NewTerminal is true, open in a new terminal window
+	if opts.NewTerminal {
+		command := fmt.Sprintf("droid %s", joinArgsForShell(args))
+		terminalName := opts.TerminalName
+		if terminalName == "" {
+			terminalName = "Droid CLI"
+		}
+		
+		return OpenInNewTerminal(opts.WorkDir, command, terminalName)
+	}
+
 	cmd := exec.CommandContext(ctx, path, args...)
 	cmd.Dir = opts.WorkDir
 	cmd.Env = os.Environ()

@@ -33,4 +33,7 @@ type LaunchOptions struct {
 
 	// TerminalName is the name to set for the terminal window
 	TerminalName string
+
+	// NewTerminal determines if the tool should launch in a new terminal window
+	NewTerminal bool
 }
