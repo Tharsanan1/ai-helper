@@ -239,6 +239,124 @@ ctl config set global.default_cli claude
 
 Supported values for `global.default_cli`: `claude`, `gemini`, `copilot`, `droid`, `opencode`
 
+## Bash Aliases
+
+To speed up your workflow, add these aliases to your `~/.bashrc` or `~/.zshrc`:
+
+### Basic Aliases
+
+```bash
+# Worktree shortcuts - use single letter commands
+alias ctl='aihelper'                      # If you prefer 'ctl' as the main command
+alias wc='aihelper c'                     # Create worktree
+alias ws='aihelper sw'                    # Switch worktree
+alias wl='aihelper ls'                    # List worktrees
+alias wr='aihelper r'                     # Remove worktree
+
+# Config shortcuts
+alias cfg='aihelper config'               # Config command
+alias cfgl='aihelper config list'         # List config
+alias cfgs='aihelper config set'          # Set config
+alias cfgg='aihelper config get'          # Get config
+```
+
+### Advanced Aliases with Pre-configured Options
+
+```bash
+# Create with Claude in agent mode (default launcher)
+alias wca='aihelper c'                    # Default creates with Claude
+
+# Create with specific AI tools
+alias wcc='aihelper c'                    # Claude (default)
+alias wco='aihelper c --opencode'         # OpenCode
+alias wcg='aihelper c --gemini'           # Gemini
+alias wcd='aihelper c --droid'            # Droid
+alias wcp='aihelper c --copilot'          # Copilot
+
+# Create without launching any AI tool
+alias wcn='aihelper c --no-claude'        # No launcher
+
+# Create and open in new terminal
+alias wcnt='aihelper c --new-terminal'    # New terminal window
+
+# Switch with specific AI tools
+alias wso='aihelper sw --opencode'        # Switch + OpenCode
+alias wsg='aihelper sw --gemini'          # Switch + Gemini
+alias wsd='aihelper sw --droid'           # Switch + Droid
+alias wsp='aihelper sw --copilot'         # Switch + Copilot
+
+# Create from a specific branch
+alias wcm='aihelper c -f main'            # Create from main branch
+alias wcd='aihelper c -f develop'         # Create from develop branch
+
+# Delete worktree with branch cleanup
+alias wrd='aihelper r --delete-branch'    # Remove + delete branch
+```
+
+### Usage Examples
+
+```bash
+# Create a feature branch and launch Claude
+wc feature-auth
+
+# Create from main branch with custom branch name
+wc feature-payment -b payment/stripe -f main
+
+# Switch to existing worktree
+ws feature-auth
+
+# List all worktrees
+wl
+
+# Remove worktree and delete the branch
+wrd feature-auth
+
+# Create with OpenCode instead of Claude
+wco feature-mobile
+
+# View configuration
+cfgl
+
+# Set a config value
+cfgs claude.auto_launch false
+```
+
+### One-liner Installation
+
+Add these to your shell config file:
+
+```bash
+# For ~/.bashrc or ~/.zshrc
+cat >> ~/.bashrc << 'EOF'
+# aihelper aliases
+alias wc='aihelper c'
+alias ws='aihelper sw'
+alias wl='aihelper ls'
+alias wr='aihelper r'
+alias wca='aihelper c'
+alias wco='aihelper c --opencode'
+alias wcg='aihelper c --gemini'
+alias wcd='aihelper c --droid'
+alias wcp='aihelper c --copilot'
+alias wcn='aihelper c --no-claude'
+alias wso='aihelper sw --opencode'
+alias wsg='aihelper sw --gemini'
+alias wsd='aihelper sw --droid'
+alias wsp='aihelper sw --copilot'
+alias cfg='aihelper config'
+alias cfgl='aihelper config list'
+alias cfgs='aihelper config set'
+alias cfgg='aihelper config get'
+EOF
+source ~/.bashrc
+```
+
+Then reload your shell:
+
+```bash
+source ~/.bashrc
+```
+
 ## Command Reference
 
 ### Global Flags
