@@ -1,0 +1,120 @@
+package launcher
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"os/signal"
+	"syscall"
+
+	pkgerrors "github.com/tharsanan1/ai-helper/pkg/errors"
+)
+
+type CopilotLauncher struct {
+	cliPath string
+}
+
+func NewCopilotLauncher(cliPath string) *CopilotLauncher {
+	return &CopilotLauncher{
+		cliPath: cliPath,
+	}
+}
+
+func (c *CopilotLauncher) Name() string {
+	return "copilot"
+}
+
+func (c *CopilotLauncher) IsAvailable() bool {
+	path := c.getCLIPath()
+	if path == "" {
+		return false
+	}
+
+	if _, err := exec.LookPath(path); err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (c *CopilotLauncher) Launch(ctx context.Context, opts LaunchOptions) error {
+	if !c.IsAvailable() {
+		return pkgerrors.NewToolError("copilot", pkgerrors.ErrToolNotAvailable)
+	}
+
+	path := c.getCLIPath()
+
+	args := []string{}
+	args = append(args, opts.Args...)
+
+	cmd := exec.CommandContext(ctx, path, args...)
+	cmd.Dir = opts.WorkDir
+	cmd.Env = os.Environ()
+
+	for k, v := range opts.Env {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	if opts.Interactive {
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start Copilot: %w", err)
+	}
+
+	if opts.TerminalName != "" && opts.Interactive {
+		SetTerminalTitle(opts.TerminalName)
+	}
+
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- cmd.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		return ctx.Err()
+	case sig := <-sigChan:
+		if cmd.Process != nil {
+			_ = cmd.Process.Signal(sig)
+		}
+		<-errChan
+		return nil
+	case err := <-errChan:
+		return err
+	}
+}
+
+func (c *CopilotLauncher) getCLIPath() string {
+	if c.cliPath != "" {
+		return c.cliPath
+	}
+
+	if path, err := exec.LookPath("copilot"); err == nil {
+		return path
+	}
+
+	commonPaths := []string{
+		"/usr/local/bin/copilot",
+		"/opt/homebrew/bin/copilot",
+		"/usr/bin/copilot",
+	}
+
+	for _, path := range commonPaths {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+
+	return ""
+}

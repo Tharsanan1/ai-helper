@@ -14,9 +14,9 @@ var getCmd = &cobra.Command{
 	Long: `Get the value of a configuration key.
 
 Examples:
-  ctl config get worktree.base_location
-  ctl config get claude.auto_launch
-  ctl config get global.verbosity`,
+  aihelper config get worktree.base_location
+  aihelper config get claude.auto_launch
+  aihelper config get global.verbosity`,
 	Args: cobra.ExactArgs(1),
 	RunE: runGet,
 }

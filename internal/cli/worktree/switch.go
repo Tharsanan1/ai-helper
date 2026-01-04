@@ -19,6 +19,7 @@ var (
 	switchOpenCode     bool
 	switchGemini       bool
 	switchDroid        bool
+	switchCopilot      bool
 	switchTerminalName string
 )
 
@@ -33,19 +34,22 @@ This command finds the worktree by name and launches Claude in its directory.
 
 Examples:
   # Switch to a worktree
-  ctl worktree switch feature-auth
+  aihelper worktree switch feature-auth
 
   # Switch with custom Claude mode
-  ctl worktree switch feature-auth --claude-mode chat
+  aihelper worktree switch feature-auth --claude-mode chat
 
   # Switch and launch OpenCode instead of Claude
-  ctl worktree switch feature-auth --opencode
+  aihelper worktree switch feature-auth --opencode
 
   # Switch and launch Gemini CLI instead of Claude
-  ctl worktree switch feature-auth --gemini
+  aihelper worktree switch feature-auth --gemini
 
   # Switch and launch Droid CLI instead of Claude
-  ctl worktree switch feature-auth --droid`,
+  aihelper worktree switch feature-auth --droid
+
+  # Switch and launch Copilot CLI instead of Claude
+  aihelper worktree switch feature-auth --copilot`,
 	Args: cobra.ExactArgs(1),
 	RunE: runSwitch,
 }
@@ -57,6 +61,7 @@ func RegisterSwitchFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&switchOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
 	cmd.Flags().BoolVar(&switchGemini, "gemini", false, "Launch Gemini CLI instead of Claude")
 	cmd.Flags().BoolVar(&switchDroid, "droid", false, "Launch Droid CLI instead of Claude")
+	cmd.Flags().BoolVar(&switchCopilot, "copilot", false, "Launch Copilot CLI instead of Claude")
 	cmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 }
 
@@ -128,6 +133,15 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 				color.Yellow("Warning: failed to launch Droid: %v\n", err)
 			} else {
 				fmt.Printf("Warning: failed to launch Droid: %v\n", err)
+			}
+			return nil
+		}
+	} else if switchCopilot {
+		if err := launchCopilotToolForSwitch(worktreePath, name); err != nil {
+			if util.GlobalContext.IsColorEnabled() {
+				color.Yellow("Warning: failed to launch Copilot: %v\n", err)
+			} else {
+				fmt.Printf("Warning: failed to launch Copilot: %v\n", err)
 			}
 			return nil
 		}
@@ -234,6 +248,37 @@ func launchDroidToolForSwitch(worktreePath string, terminalName string) error {
 
 	ctx := context.Background()
 	if err := droidLauncher.Launch(ctx, opts); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func launchCopilotToolForSwitch(worktreePath string, terminalName string) error {
+	copilotLauncher := launcher.NewCopilotLauncher("")
+
+	if !copilotLauncher.IsAvailable() {
+		return fmt.Errorf("Copilot CLI not found. Please install it")
+	}
+
+	opts := launcher.LaunchOptions{
+		WorkDir:      worktreePath,
+		Interactive:  launcher.IsTTY(),
+		TerminalName: getSwitchTerminalName(terminalName),
+	}
+
+	if util.GlobalContext.IsVerbose() {
+		fmt.Printf("Launching Copilot in %s...\n", worktreePath)
+	}
+
+	if util.GlobalContext.IsColorEnabled() {
+		color.Cyan("Launching Copilot...\n")
+	} else {
+		fmt.Println("Launching Copilot...")
+	}
+
+	ctx := context.Background()
+	if err := copilotLauncher.Launch(ctx, opts); err != nil {
 		return err
 	}
 

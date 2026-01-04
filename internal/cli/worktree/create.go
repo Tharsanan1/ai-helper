@@ -25,6 +25,7 @@ var (
 	createOpenCode       bool
 	createGemini         bool
 	createDroid          bool
+	createCopilot        bool
 	createTerminalName   string
 )
 
@@ -42,28 +43,31 @@ The create command will:
 
 Examples:
   # Create a worktree and launch Claude
-  ctl worktree create feature-auth
+  aihelper worktree create feature-auth
 
   # Create with custom branch name
-  ctl worktree create feature-auth -b auth/login
+  aihelper worktree create feature-auth -b auth/login
 
   # Create from specific source branch
-  ctl worktree create hotfix -f main -b hotfix/security
+  aihelper worktree create hotfix -f main -b hotfix/security
 
   # Create without launching Claude
-  ctl worktree create experiment --no-claude
+  aihelper worktree create experiment --no-claude
 
   # Use an existing branch
-  ctl worktree create feature-x -b existing-branch --existing-branch
+  aihelper worktree create feature-x -b existing-branch --existing-branch
 
   # Create worktree and launch OpenCode instead of Claude
-  ctl worktree create feature-x --opencode
+  aihelper worktree create feature-x --opencode
 
   # Create worktree and launch Gemini CLI instead of Claude
-  ctl worktree create feature-x --gemini
+  aihelper worktree create feature-x --gemini
 
   # Create worktree and launch Droid CLI instead of Claude
-  ctl worktree create feature-x --droid`,
+  aihelper worktree create feature-x --droid
+
+  # Create worktree and launch Copilot CLI instead of Claude
+  aihelper worktree create feature-x --copilot`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCreate,
 }
@@ -80,6 +84,7 @@ func RegisterCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&createOpenCode, "opencode", false, "Launch OpenCode instead of Claude")
 	cmd.Flags().BoolVar(&createGemini, "gemini", false, "Launch Gemini CLI instead of Claude")
 	cmd.Flags().BoolVar(&createDroid, "droid", false, "Launch Droid CLI instead of Claude")
+	cmd.Flags().BoolVar(&createCopilot, "copilot", false, "Launch Copilot CLI instead of Claude")
 	cmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 }
 
@@ -149,10 +154,11 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Launch tool if enabled
-	launchClaude := !createNoClaude && cfg.Claude.AutoLaunch && !createOpenCode && !createGemini && !createDroid
+	launchClaude := !createNoClaude && cfg.Claude.AutoLaunch && !createOpenCode && !createGemini && !createDroid && !createCopilot
 	launchOpenCode := createOpenCode
 	launchGemini := createGemini
 	launchDroid := createDroid
+	launchCopilot := createCopilot
 
 	if launchOpenCode {
 		if err := launchOpenCodeTool(worktreePath, name); err != nil {
@@ -178,6 +184,15 @@ func runCreate(cmd *cobra.Command, args []string) error {
 				color.Yellow("Warning: failed to launch Droid: %v\n", err)
 			} else {
 				fmt.Printf("Warning: failed to launch Droid: %v\n", err)
+			}
+			return nil
+		}
+	} else if launchCopilot {
+		if err := launchCopilotTool(worktreePath, getTerminalName(name)); err != nil {
+			if util.GlobalContext.IsColorEnabled() {
+				color.Yellow("Warning: failed to launch Copilot: %v\n", err)
+			} else {
+				fmt.Printf("Warning: failed to launch Copilot: %v\n", err)
 			}
 			return nil
 		}
@@ -282,6 +297,37 @@ func launchDroidTool(worktreePath string, terminalName string) error {
 
 	ctx := context.Background()
 	if err := droidLauncher.Launch(ctx, opts); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func launchCopilotTool(worktreePath string, terminalName string) error {
+	copilotLauncher := launcher.NewCopilotLauncher("")
+
+	if !copilotLauncher.IsAvailable() {
+		return fmt.Errorf("Copilot CLI not found. Please install it")
+	}
+
+	opts := launcher.LaunchOptions{
+		WorkDir:      worktreePath,
+		Interactive:  launcher.IsTTY(),
+		TerminalName: terminalName,
+	}
+
+	if util.GlobalContext.IsVerbose() {
+		fmt.Printf("Launching Copilot in %s...\n", worktreePath)
+	}
+
+	if util.GlobalContext.IsColorEnabled() {
+		color.Cyan("Launching Copilot...\n")
+	} else {
+		fmt.Println("Launching Copilot...")
+	}
+
+	ctx := context.Background()
+	if err := copilotLauncher.Launch(ctx, opts); err != nil {
 		return err
 	}
 

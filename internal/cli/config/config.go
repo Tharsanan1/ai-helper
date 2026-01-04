@@ -8,7 +8,7 @@ import (
 var ConfigCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Manage configuration",
-	Long: `Manage ctl configuration settings.
+	Long: `Manage aihelper configuration settings.
 
 The config command group provides subcommands for viewing and modifying
 configuration values.`,

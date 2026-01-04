@@ -20,13 +20,13 @@ var setCmd = &cobra.Command{
 	Short: "Set a configuration value",
 	Long: `Set the value of a configuration key.
 
-By default, this updates the global configuration (~/.config/ctl/config.yaml).
+By default, this updates the global configuration (~/.config/aihelper/config.yaml).
 Use --global flag to explicitly specify global config.
 
 Examples:
-  ctl config set worktree.base_location /custom/path
-  ctl config set claude.auto_launch false
-  ctl config set global.verbosity 2`,
+  aihelper config set worktree.base_location /custom/path
+  aihelper config set claude.auto_launch false
+  aihelper config set global.verbosity 2`,
 	Args: cobra.ExactArgs(2),
 	RunE: runSet,
 }
