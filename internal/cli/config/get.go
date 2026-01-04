@@ -16,7 +16,8 @@ var getCmd = &cobra.Command{
 Examples:
   aihelper config get worktree.base_location
   aihelper config get claude.auto_launch
-  aihelper config get global.verbosity`,
+  aihelper config get global.verbosity
+  aihelper config get global.default_cli`,
 	Args: cobra.ExactArgs(1),
 	RunE: runGet,
 }

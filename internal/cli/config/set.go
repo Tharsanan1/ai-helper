@@ -26,7 +26,8 @@ Use --global flag to explicitly specify global config.
 Examples:
   aihelper config set worktree.base_location /custom/path
   aihelper config set claude.auto_launch false
-  aihelper config set global.verbosity 2`,
+  aihelper config set global.verbosity 2
+  aihelper config set global.default_cli gemini`,
 	Args: cobra.ExactArgs(2),
 	RunE: runSet,
 }
@@ -108,6 +109,12 @@ func setConfigValue(cfg *internalConfig.Config, key, value string) error {
 		cfg.Global.Color = val
 	case "global.editor":
 		cfg.Global.Editor = value
+	case "global.default_cli":
+		validCLIs := map[string]bool{"claude": true, "gemini": true, "copilot": true, "droid": true, "opencode": true}
+		if !validCLIs[value] {
+			return fmt.Errorf("invalid CLI: %s (must be one of: claude, gemini, copilot, droid, opencode)", value)
+		}
+		cfg.Global.DefaultCLI = value
 
 	default:
 		return fmt.Errorf("unknown config key: %s", key)
