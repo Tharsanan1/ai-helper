@@ -32,6 +32,9 @@ type ClaudeConfig struct {
 
 	// CLIPath is the path to Claude CLI (auto-detected if not specified)
 	CLIPath string `mapstructure:"cli_path" yaml:"cli_path"`
+
+	// MinimaxAPIKey is the API key for using Minimax APIs with Claude
+	MinimaxAPIKey string `mapstructure:"minimax_api_key" yaml:"minimax_api_key"`
 }
 
 // GlobalConfig contains global settings

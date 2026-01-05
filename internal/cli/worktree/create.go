@@ -27,6 +27,7 @@ var (
 	createDroid          bool
 	createCopilot        bool
 	createClaude         bool
+	createMinimax        bool
 	createTerminalName   string
 	createNewTerminal    bool
 	createSandbox        bool
@@ -74,7 +75,10 @@ Examples:
 
   # Create worktree and launch Copilot CLI instead of Claude
    # Create worktree and launch Claude (explicitly)
-   aihelper worktree create feature-x --claude  aihelper worktree create feature-x --copilot`,
+   aihelper worktree create feature-x --claude
+
+  # Create worktree and launch Claude with Minimax APIs
+   aihelper worktree create feature-x --minimax`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCreate,
 }
@@ -93,6 +97,7 @@ func RegisterCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&createDroid, "droid", false, "Launch Droid CLI instead of Claude")
 	cmd.Flags().BoolVar(&createCopilot, "copilot", false, "Launch Copilot CLI instead of Claude")
 	cmd.Flags().BoolVar(&createClaude, "claude", false, "Launch Claude (explicitly, useful for overriding defaults)")
+	cmd.Flags().BoolVar(&createMinimax, "minimax", false, "Launch Claude with Minimax APIs (requires minimax_api_key in config)")
 	cmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 	cmd.Flags().BoolVar(&createNewTerminal, "new-terminal", false, "Launch agent in a new terminal window")
 	cmd.Flags().BoolVar(&createSandbox, "sandbox", false, "Launch agent in a docker sandbox")
@@ -170,9 +175,10 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	launchDroid := createDroid
 	launchCopilot := createCopilot
 	launchClaude := createClaude
+	launchMinimax := createMinimax
 
 	// If no explicit flag is set and not --no-claude, determine based on default CLI
-	if !createNoClaude && !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude {
+	if !createNoClaude && !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude && !launchMinimax {
 		defaultCLI := cfg.Global.DefaultCLI
 		if defaultCLI == "" {
 			defaultCLI = "claude"
@@ -228,8 +234,8 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			}
 			return nil
 		}
-	} else if launchClaude {
-		if err := launchClaudeTool(worktreePath, name, cfg); err != nil {
+	} else if launchClaude || launchMinimax {
+		if err := launchClaudeTool(worktreePath, name, cfg, launchMinimax); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch Claude: %v\n", err)
 			} else {
@@ -374,7 +380,7 @@ func launchCopilotTool(worktreePath string, terminalName string) error {
 	return nil
 }
 
-func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Config) error {
+func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Config, useMinimax bool) error {
 	// Create Claude launcher
 	claudeLauncher := launcher.NewClaudeLauncher(cfg.Claude.CLIPath)
 
@@ -391,10 +397,22 @@ func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Conf
 
 	args := append(cfg.Claude.ExtraArgs, createClaudeArgs...)
 
+	// Prepare environment variables
+	env := make(map[string]string)
+	if useMinimax {
+		// Set Minimax environment variables
+		if cfg.Claude.MinimaxAPIKey == "" {
+			return fmt.Errorf("minimax_api_key not set in config. Use 'aihelper config set claude.minimax_api_key <your-key>'")
+		}
+		env["ANTHROPIC_BASE_URL"] = "https://api.minimax.io/anthropic"
+		env["ANTHROPIC_API_KEY"] = cfg.Claude.MinimaxAPIKey
+	}
+
 	opts := launcher.LaunchOptions{
 		WorkDir:      worktreePath,
 		Args:         args,
 		Mode:         mode,
+		Env:          env,
 		Interactive:  launcher.IsTTY(),
 		TerminalName: getTerminalName(terminalName),
 		NewTerminal:  createNewTerminal,
@@ -410,9 +428,17 @@ func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Conf
 	}
 
 	if util.GlobalContext.IsColorEnabled() {
-		color.Cyan("Launching Claude Code CLI...\n")
+		if useMinimax {
+			color.Cyan("Launching Claude Code CLI with Minimax APIs...\n")
+		} else {
+			color.Cyan("Launching Claude Code CLI...\n")
+		}
 	} else {
-		fmt.Println("Launching Claude Code CLI...")
+		if useMinimax {
+			fmt.Println("Launching Claude Code CLI with Minimax APIs...")
+		} else {
+			fmt.Println("Launching Claude Code CLI...")
+		}
 	}
 
 	// Launch Claude

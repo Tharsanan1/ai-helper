@@ -93,6 +93,8 @@ func setConfigValue(cfg *internalConfig.Config, key, value string) error {
 		cfg.Claude.AutoLaunch = val
 	case "claude.cli_path":
 		cfg.Claude.CLIPath = value
+	case "claude.minimax_api_key":
+		cfg.Claude.MinimaxAPIKey = value
 
 	// Global config
 	case "global.verbosity":

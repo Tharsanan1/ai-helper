@@ -21,6 +21,7 @@ var (
 	switchDroid        bool
 	switchCopilot      bool
 	switchClaude       bool
+	switchMinimax      bool
 	switchTerminalName string
 	switchSandbox      bool
 )
@@ -52,7 +53,10 @@ Examples:
 
   # Switch and launch Copilot CLI instead of Claude
    # Switch and launch Claude (explicitly)
-   aihelper worktree switch feature-auth --claude  aihelper worktree switch feature-auth --copilot`,
+   aihelper worktree switch feature-auth --claude
+
+  # Switch and launch Claude with Minimax APIs
+   aihelper worktree switch feature-auth --minimax`,
 	Args: cobra.ExactArgs(1),
 	RunE: runSwitch,
 }
@@ -66,6 +70,7 @@ func RegisterSwitchFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&switchDroid, "droid", false, "Launch Droid CLI instead of Claude")
 	cmd.Flags().BoolVar(&switchCopilot, "copilot", false, "Launch Copilot CLI instead of Claude")
 	cmd.Flags().BoolVar(&switchClaude, "claude", false, "Launch Claude (explicitly, useful for overriding defaults)")
+	cmd.Flags().BoolVar(&switchMinimax, "minimax", false, "Launch Claude with Minimax APIs (requires minimax_api_key in config)")
 	cmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 	cmd.Flags().BoolVar(&switchSandbox, "sandbox", false, "Launch agent in a docker sandbox")
 }
@@ -119,9 +124,10 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 	launchDroid := switchDroid
 	launchCopilot := switchCopilot
 	launchClaude := switchClaude
+	launchMinimax := switchMinimax
 
 	// If no explicit flag is set, determine based on default CLI
-	if !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude {
+	if !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude && !launchMinimax {
 		defaultCLI := cfg.Global.DefaultCLI
 		if defaultCLI == "" {
 			defaultCLI = "claude"
@@ -177,7 +183,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			}
 			return nil
 		}
-	} else if launchClaude {
+	} else if launchClaude || launchMinimax {
 		// Launch Claude
 		claudeLauncher := launcher.NewClaudeLauncher(cfg.Claude.CLIPath)
 
@@ -193,19 +199,39 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 
 		args := append(cfg.Claude.ExtraArgs, switchClaudeArgs...)
 
+		// Prepare environment variables
+		env := make(map[string]string)
+		if launchMinimax {
+			// Set Minimax environment variables
+			if cfg.Claude.MinimaxAPIKey == "" {
+				return fmt.Errorf("minimax_api_key not set in config. Use 'aihelper config set claude.minimax_api_key <your-key>'")
+			}
+			env["ANTHROPIC_BASE_URL"] = "https://api.minimax.io/anthropic"
+			env["ANTHROPIC_API_KEY"] = cfg.Claude.MinimaxAPIKey
+		}
+
 		opts := launcher.LaunchOptions{
 			WorkDir:      worktreePath,
 			Args:         args,
 			Mode:         mode,
+			Env:          env,
 			Interactive:  launcher.IsTTY(),
 			TerminalName: getSwitchTerminalName(name),
 			Sandbox:      switchSandbox,
 		}
 
 		if util.GlobalContext.IsColorEnabled() {
-			color.Cyan("Launching Claude Code CLI in %s...\n", worktreePath)
+			if launchMinimax {
+				color.Cyan("Launching Claude Code CLI with Minimax APIs in %s...\n", worktreePath)
+			} else {
+				color.Cyan("Launching Claude Code CLI in %s...\n", worktreePath)
+			}
 		} else {
-			fmt.Printf("Launching Claude Code CLI in %s...\n", worktreePath)
+			if launchMinimax {
+				fmt.Printf("Launching Claude Code CLI with Minimax APIs in %s...\n", worktreePath)
+			} else {
+				fmt.Printf("Launching Claude Code CLI in %s...\n", worktreePath)
+			}
 		}
 
 		// Launch Claude

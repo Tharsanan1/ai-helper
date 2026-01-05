@@ -39,6 +39,7 @@ func NewManager(repoRoot string) *Manager {
 	v.SetDefault("claude.auto_launch", defaults.Claude.AutoLaunch)
 	v.SetDefault("claude.extra_args", defaults.Claude.ExtraArgs)
 	v.SetDefault("claude.cli_path", defaults.Claude.CLIPath)
+	v.SetDefault("claude.minimax_api_key", defaults.Claude.MinimaxAPIKey)
 	v.SetDefault("global.verbosity", defaults.Global.Verbosity)
 	v.SetDefault("global.color", defaults.Global.Color)
 	v.SetDefault("global.editor", defaults.Global.Editor)
