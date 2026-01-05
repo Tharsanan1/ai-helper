@@ -50,6 +50,10 @@ func (c *ClaudeLauncher) Launch(ctx context.Context, opts LaunchOptions) error {
 		return pkgerrors.NewToolError("claude", pkgerrors.ErrToolNotAvailable)
 	}
 
+	if opts.Sandbox {
+		return c.launchSandbox(ctx, opts)
+	}
+
 	path := c.getCLIPath()
 
 	// Build command arguments
@@ -164,4 +168,88 @@ func (c *ClaudeLauncher) getCLIPath() string {
 	}
 
 	return ""
+}
+
+func (c *ClaudeLauncher) launchSandbox(ctx context.Context, opts LaunchOptions) error {
+	dockerArgs, err := GetDockerSandboxCommand(opts.WorkDir)
+	if err != nil {
+		return err
+	}
+
+	// Add claude command and args
+	dockerArgs = append(dockerArgs, "claude", "--dangerously-skip-permissions")
+	
+	// Add mode if specified (though for sandbox we might just rely on args?)
+	// The original Launch method had logic for mode.
+	if opts.Mode != "" {
+		// If mode is passed as argument, append it?
+		// But in docker we are just running "claude ..."
+		// If users pass "agent" mode, does it map to an arg? 
+		// "claude agent" or "claude chat"
+		// The original code said: "Claude accepts mode as a flag or can be inferred... For now, we'll just pass it to the working directory"
+		// Wait, the original code for mode did NOTHING with args:
+		/*
+		case "agent", "chat":
+			// Claude accepts mode as a flag or can be inferred
+			// For now, we'll just pass it to the working directory
+			// The user can configure their Claude to default to a mode
+		*/
+		// It just validated it.
+	}
+
+	if len(opts.Args) > 0 {
+		dockerArgs = append(dockerArgs, opts.Args...)
+	}
+
+	// If NewTerminal is true, open in a new terminal window
+	if opts.NewTerminal {
+		command := fmt.Sprintf("docker %s", joinArgsForShell(dockerArgs))
+		terminalName := opts.TerminalName
+		if terminalName == "" {
+			terminalName = "Claude Sandbox"
+		}
+		
+		return OpenInNewTerminal(opts.WorkDir, command, terminalName)
+	}
+
+	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
+	cmd.Env = os.Environ()
+
+	if opts.Interactive {
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start Claude in sandbox: %w", err)
+	}
+
+	if opts.TerminalName != "" && opts.Interactive {
+		SetTerminalTitle(opts.TerminalName)
+	}
+
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- cmd.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		return ctx.Err()
+	case sig := <-sigChan:
+		if cmd.Process != nil {
+			_ = cmd.Process.Signal(sig)
+		}
+		<-errChan
+		return nil
+	case err := <-errChan:
+		return err
+	}
 }

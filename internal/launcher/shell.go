@@ -93,3 +93,22 @@ func joinArgsForShell(args []string) string {
 	}
 	return strings.Join(quoted, " ")
 }
+
+// GetDockerSandboxCommand returns the base arguments for running the agent in a docker sandbox
+func GetDockerSandboxCommand(workDir string) ([]string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user home dir: %w", err)
+	}
+
+	return []string{
+		"run", "--rm", "-it",
+		"--network", "host",
+		"-v", fmt.Sprintf("%s:/workspace:rw", workDir),
+		"-v", fmt.Sprintf("%s/.aihelper-config:/home/developer:rw", homeDir),
+		"-v", fmt.Sprintf("%s/.ssh:/home/developer/.ssh:ro", homeDir),
+		"-v", fmt.Sprintf("%s/.gitconfig:/home/developer/.gitconfig:ro", homeDir),
+		"-w", "/workspace",
+		"aihelper-sandbox:latest",
+	}, nil
+}

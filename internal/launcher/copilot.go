@@ -43,6 +43,10 @@ func (c *CopilotLauncher) Launch(ctx context.Context, opts LaunchOptions) error 
 		return pkgerrors.NewToolError("copilot", pkgerrors.ErrToolNotAvailable)
 	}
 
+	if opts.Sandbox {
+		return c.launchSandbox(ctx, opts)
+	}
+
 	path := c.getCLIPath()
 
 	// If NewTerminal is true, open in a new terminal window
@@ -132,4 +136,69 @@ func (c *CopilotLauncher) getCLIPath() string {
 	}
 
 	return ""
+}
+
+func (c *CopilotLauncher) launchSandbox(ctx context.Context, opts LaunchOptions) error {
+	dockerArgs, err := GetDockerSandboxCommand(opts.WorkDir)
+	if err != nil {
+		return err
+	}
+
+	// Add copilot command and args
+	dockerArgs = append(dockerArgs, "copilot", "--allow-all-tools", "--allow-all-paths")
+	if len(opts.Args) > 0 {
+		dockerArgs = append(dockerArgs, opts.Args...)
+	}
+
+	// If NewTerminal is true, open in a new terminal window
+	if opts.NewTerminal {
+		command := fmt.Sprintf("docker %s", joinArgsForShell(dockerArgs))
+		terminalName := opts.TerminalName
+		if terminalName == "" {
+			terminalName = "Copilot Sandbox"
+		}
+		
+		return OpenInNewTerminal(opts.WorkDir, command, terminalName)
+	}
+
+	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
+	cmd.Env = os.Environ()
+
+	if opts.Interactive {
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start Copilot in sandbox: %w", err)
+	}
+
+	if opts.TerminalName != "" && opts.Interactive {
+		SetTerminalTitle(opts.TerminalName)
+	}
+
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- cmd.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		return ctx.Err()
+	case sig := <-sigChan:
+		if cmd.Process != nil {
+			_ = cmd.Process.Signal(sig)
+		}
+		<-errChan
+		return nil
+	case err := <-errChan:
+		return err
+	}
 }

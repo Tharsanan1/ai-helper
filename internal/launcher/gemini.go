@@ -43,6 +43,10 @@ func (g *GeminiLauncher) Launch(ctx context.Context, opts LaunchOptions) error {
 		return pkgerrors.NewToolError("gemini", pkgerrors.ErrToolNotAvailable)
 	}
 
+	if opts.Sandbox {
+		return g.launchSandbox(ctx, opts)
+	}
+
 	path := g.getCLIPath()
 
 	args := []string{}
@@ -128,4 +132,75 @@ func (g *GeminiLauncher) getCLIPath() string {
 	}
 
 	return ""
+}
+
+func (g *GeminiLauncher) launchSandbox(ctx context.Context, opts LaunchOptions) error {
+	dockerArgs, err := GetDockerSandboxCommand(opts.WorkDir)
+	if err != nil {
+		return err
+	}
+
+	// Add gemini command and args
+	dockerArgs = append(dockerArgs, "gemini", "--yolo")
+	if len(opts.Args) > 0 {
+		dockerArgs = append(dockerArgs, opts.Args...)
+	}
+
+	// If NewTerminal is true, open in a new terminal window
+	if opts.NewTerminal {
+		command := fmt.Sprintf("docker %s", joinArgsForShell(dockerArgs))
+		terminalName := opts.TerminalName
+		if terminalName == "" {
+			terminalName = "Gemini Sandbox"
+		}
+		
+		return OpenInNewTerminal(opts.WorkDir, command, terminalName)
+	}
+
+	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
+	cmd.Env = os.Environ()
+
+	// Pass env vars? (maybe not needed for sandbox as we mount config, but let's keep it consistent if needed)
+	// But docker environment is separate. We might want to pass with -e.
+	// The user request didn't specify passing env vars, so I'll skip it for now to keep it simple and match the request.
+
+	if opts.Interactive {
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start Gemini in sandbox: %w", err)
+	}
+
+	if opts.TerminalName != "" && opts.Interactive {
+		SetTerminalTitle(opts.TerminalName)
+	}
+
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- cmd.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+		if cmd.Process != nil {
+			// In docker case, killing the client might not kill the container immediately if using -it? 
+			// But --rm is there.
+			_ = cmd.Process.Kill()
+		}
+		return ctx.Err()
+	case sig := <-sigChan:
+		if cmd.Process != nil {
+			_ = cmd.Process.Signal(sig)
+		}
+		<-errChan
+		return nil
+	case err := <-errChan:
+		return err
+	}
 }

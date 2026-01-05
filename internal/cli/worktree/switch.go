@@ -22,6 +22,7 @@ var (
 	switchCopilot      bool
 	switchClaude       bool
 	switchTerminalName string
+	switchSandbox      bool
 )
 
 // switchCmd represents the switch command
@@ -66,6 +67,7 @@ func RegisterSwitchFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&switchCopilot, "copilot", false, "Launch Copilot CLI instead of Claude")
 	cmd.Flags().BoolVar(&switchClaude, "claude", false, "Launch Claude (explicitly, useful for overriding defaults)")
 	cmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
+	cmd.Flags().BoolVar(&switchSandbox, "sandbox", false, "Launch agent in a docker sandbox")
 }
 
 func init() {
@@ -140,7 +142,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 	}
 
 	if launchOpenCode {
-		if err := launchOpenCodeTool(worktreePath, name); err != nil {
+		if err := launchOpenCodeTool(worktreePath, name, switchSandbox); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch OpenCode: %v\n", err)
 			} else {
@@ -197,6 +199,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			Mode:         mode,
 			Interactive:  launcher.IsTTY(),
 			TerminalName: getSwitchTerminalName(name),
+			Sandbox:      switchSandbox,
 		}
 
 		if util.GlobalContext.IsColorEnabled() {
@@ -233,6 +236,7 @@ func launchGeminiToolForSwitch(worktreePath string, terminalName string) error {
 		WorkDir:      worktreePath,
 		Interactive:  launcher.IsTTY(),
 		TerminalName: getSwitchTerminalName(terminalName),
+		Sandbox:      switchSandbox,
 	}
 
 	if util.GlobalContext.IsVerbose() {
@@ -264,6 +268,7 @@ func launchDroidToolForSwitch(worktreePath string, terminalName string) error {
 		WorkDir:      worktreePath,
 		Interactive:  launcher.IsTTY(),
 		TerminalName: getSwitchTerminalName(terminalName),
+		Sandbox:      switchSandbox,
 	}
 
 	if util.GlobalContext.IsVerbose() {
@@ -295,6 +300,7 @@ func launchCopilotToolForSwitch(worktreePath string, terminalName string) error 
 		WorkDir:      worktreePath,
 		Interactive:  launcher.IsTTY(),
 		TerminalName: getSwitchTerminalName(terminalName),
+		Sandbox:      switchSandbox,
 	}
 
 	if util.GlobalContext.IsVerbose() {

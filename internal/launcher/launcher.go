@@ -36,4 +36,7 @@ type LaunchOptions struct {
 
 	// NewTerminal determines if the tool should launch in a new terminal window
 	NewTerminal bool
+
+	// Sandbox determines if the tool should run in a docker sandbox
+	Sandbox bool
 }

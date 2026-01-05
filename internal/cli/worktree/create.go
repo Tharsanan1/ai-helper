@@ -29,6 +29,7 @@ var (
 	createClaude         bool
 	createTerminalName   string
 	createNewTerminal    bool
+	createSandbox        bool
 )
 
 // createCmd represents the create command
@@ -94,6 +95,7 @@ func RegisterCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&createClaude, "claude", false, "Launch Claude (explicitly, useful for overriding defaults)")
 	cmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 	cmd.Flags().BoolVar(&createNewTerminal, "new-terminal", false, "Launch agent in a new terminal window")
+	cmd.Flags().BoolVar(&createSandbox, "sandbox", false, "Launch agent in a docker sandbox")
 }
 
 func init() {
@@ -191,7 +193,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	if launchOpenCode {
-		if err := launchOpenCodeTool(worktreePath, name); err != nil {
+		if err := launchOpenCodeTool(worktreePath, name, createSandbox); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch OpenCode: %v\n", err)
 			} else {
@@ -240,7 +242,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func launchOpenCodeTool(worktreePath string, terminalName string) error {
+func launchOpenCodeTool(worktreePath string, terminalName string, sandbox bool) error {
 	opencodeLauncher := launcher.NewOpenCodeLauncher("")
 
 	if !opencodeLauncher.IsAvailable() {
@@ -252,6 +254,7 @@ func launchOpenCodeTool(worktreePath string, terminalName string) error {
 		Interactive:  launcher.IsTTY(),
 		TerminalName: getTerminalName(terminalName),
 		NewTerminal:  createNewTerminal,
+		Sandbox:      sandbox,
 	}
 
 	if util.GlobalContext.IsVerbose() {
@@ -284,6 +287,7 @@ func launchGeminiTool(worktreePath string, terminalName string) error {
 		Interactive:  launcher.IsTTY(),
 		TerminalName: terminalName,
 		NewTerminal:  createNewTerminal,
+		Sandbox:      createSandbox,
 	}
 
 	if util.GlobalContext.IsVerbose() {
@@ -316,6 +320,7 @@ func launchDroidTool(worktreePath string, terminalName string) error {
 		Interactive:  launcher.IsTTY(),
 		TerminalName: terminalName,
 		NewTerminal:  createNewTerminal,
+		Sandbox:      createSandbox,
 	}
 
 	if util.GlobalContext.IsVerbose() {
@@ -348,6 +353,7 @@ func launchCopilotTool(worktreePath string, terminalName string) error {
 		Interactive:  launcher.IsTTY(),
 		TerminalName: terminalName,
 		NewTerminal:  createNewTerminal,
+		Sandbox:      createSandbox,
 	}
 
 	if util.GlobalContext.IsVerbose() {
@@ -392,6 +398,7 @@ func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Conf
 		Interactive:  launcher.IsTTY(),
 		TerminalName: getTerminalName(terminalName),
 		NewTerminal:  createNewTerminal,
+		Sandbox:      createSandbox,
 	}
 
 	// Print what we're doing
