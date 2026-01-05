@@ -634,3 +634,39 @@ MIT License - see LICENSE file for details
 - Built with [Cobra](https://github.com/spf13/cobra) for CLI framework
 - Configuration powered by [Viper](https://github.com/spf13/viper)
 - Inspired by modern development workflows and the need for better worktree management
+
+```
+docker run --rm -it \
+       --network host \
+       -v $(pwd):/workspace:rw \
+       -v ~/.aihelper-config:/home/developer:rw \
+       -v ~/.ssh:/home/developer/.ssh:ro \
+       -v ~/.gitconfig:/home/developer/.gitconfig:ro \
+       -w /workspace \
+       aihelper-sandbox:latest \
+       claude --dangerously-skip-permissions
+```
+
+```
+docker run --rm -it \
+       --network host \
+       -v $(pwd):/workspace:rw \
+       -v ~/.aihelper-config:/home/developer:rw \
+       -v ~/.ssh:/home/developer/.ssh:ro \
+       -v ~/.gitconfig:/home/developer/.gitconfig:ro \
+       -w /workspace \
+       aihelper-sandbox:latest \
+       copilot --allow-all-tools --allow-all-paths
+```
+
+```
+docker run --rm -it \
+       --network host \
+       -v $(pwd):/workspace:rw \
+       -v ~/.aihelper-config:/home/developer:rw \
+       -v ~/.ssh:/home/developer/.ssh:ro \
+       -v ~/.gitconfig:/home/developer/.gitconfig:ro \
+       -w /workspace \
+       aihelper-sandbox:latest \
+       gemini --yolo
+```
