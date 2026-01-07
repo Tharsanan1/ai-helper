@@ -95,6 +95,25 @@ func setConfigValue(cfg *internalConfig.Config, key, value string) error {
 		cfg.Claude.CLIPath = value
 	case "claude.minimax_api_key":
 		cfg.Claude.MinimaxAPIKey = value
+	case "claude.system_prompt":
+		cfg.Claude.SystemPrompt = value
+	case "claude.system_prompt_mode":
+		if value != "replace" && value != "append" {
+			return fmt.Errorf("invalid system prompt mode: %s (must be 'replace' or 'append')", value)
+		}
+		cfg.Claude.SystemPromptMode = value
+	case "claude.use_system_prompt":
+		val, err := strconv.ParseBool(value)
+		if err != nil {
+			return fmt.Errorf("invalid boolean value for %s: %s", key, value)
+		}
+		cfg.Claude.UseSystemPrompt = val
+	case "claude.minimax_verbose":
+		val, err := strconv.ParseBool(value)
+		if err != nil {
+			return fmt.Errorf("invalid boolean value for %s: %s", key, value)
+		}
+		cfg.Claude.MinimaxVerbose = val
 
 	// Global config
 	case "global.verbosity":

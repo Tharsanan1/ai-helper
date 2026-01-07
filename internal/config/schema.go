@@ -35,6 +35,18 @@ type ClaudeConfig struct {
 
 	// MinimaxAPIKey is the API key for using Minimax APIs with Claude
 	MinimaxAPIKey string `mapstructure:"minimax_api_key" yaml:"minimax_api_key"`
+
+	// SystemPrompt is the system prompt to use when launching Claude
+	SystemPrompt string `mapstructure:"system_prompt" yaml:"system_prompt"`
+
+	// SystemPromptMode determines how the system prompt is applied: "replace" or "append"
+	SystemPromptMode string `mapstructure:"system_prompt_mode" yaml:"system_prompt_mode"`
+
+	// UseSystemPrompt enables/disables the system prompt feature
+	UseSystemPrompt bool `mapstructure:"use_system_prompt" yaml:"use_system_prompt"`
+
+	// MinimaxVerbose enables verbose mode when using Minimax APIs
+	MinimaxVerbose bool `mapstructure:"minimax_verbose" yaml:"minimax_verbose"`
 }
 
 // GlobalConfig contains global settings
@@ -61,10 +73,14 @@ func DefaultConfig() *Config {
 			DefaultSourceBranch: "", // Empty means use current branch
 		},
 		Claude: ClaudeConfig{
-			DefaultMode: "agent",
-			AutoLaunch:  true,
-			ExtraArgs:   []string{},
-			CLIPath:     "", // Auto-detect
+			DefaultMode:       "agent",
+			AutoLaunch:        true,
+			ExtraArgs:         []string{},
+			CLIPath:           "", // Auto-detect
+			SystemPrompt:      "",
+			SystemPromptMode:  "replace",
+			UseSystemPrompt:   false,
+			MinimaxVerbose:    false,
 		},
 		Global: GlobalConfig{
 			Verbosity:  1,

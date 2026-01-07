@@ -28,6 +28,8 @@ var (
 	createCopilot        bool
 	createClaude         bool
 	createMinimax        bool
+	createSystemPrompt   string
+	createAppendSystemPrompt bool
 	createTerminalName   string
 	createNewTerminal    bool
 	createSandbox        bool
@@ -98,6 +100,8 @@ func RegisterCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&createCopilot, "copilot", false, "Launch Copilot CLI instead of Claude")
 	cmd.Flags().BoolVar(&createClaude, "claude", false, "Launch Claude (explicitly, useful for overriding defaults)")
 	cmd.Flags().BoolVar(&createMinimax, "minimax", false, "Launch Claude with Minimax APIs (requires minimax_api_key in config)")
+	cmd.Flags().StringVar(&createSystemPrompt, "system-prompt", "", "System prompt to use when launching Claude (overrides config)")
+	cmd.Flags().BoolVar(&createAppendSystemPrompt, "append-system-prompt", false, "Append system prompt instead of replacing")
 	cmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 	cmd.Flags().BoolVar(&createNewTerminal, "new-terminal", false, "Launch agent in a new terminal window")
 	cmd.Flags().BoolVar(&createSandbox, "sandbox", false, "Launch agent in a docker sandbox")
@@ -235,7 +239,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 	} else if launchClaude || launchMinimax {
-		if err := launchClaudeTool(worktreePath, name, cfg, launchMinimax); err != nil {
+		if err := launchClaudeTool(worktreePath, name, cfg, launchMinimax, createSystemPrompt, createAppendSystemPrompt); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch Claude: %v\n", err)
 			} else {
@@ -380,7 +384,7 @@ func launchCopilotTool(worktreePath string, terminalName string) error {
 	return nil
 }
 
-func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Config, useMinimax bool) error {
+func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Config, useMinimax bool, systemPrompt string, appendSystemPrompt bool) error {
 	// Create Claude launcher
 	claudeLauncher := launcher.NewClaudeLauncher(cfg.Claude.CLIPath)
 
@@ -406,6 +410,25 @@ func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Conf
 		}
 		env["ANTHROPIC_BASE_URL"] = "https://api.minimax.io/anthropic"
 		env["ANTHROPIC_API_KEY"] = cfg.Claude.MinimaxAPIKey
+	}
+
+	// Handle system prompt
+	effectiveSystemPrompt := systemPrompt
+	if effectiveSystemPrompt == "" && cfg.Claude.UseSystemPrompt {
+		effectiveSystemPrompt = cfg.Claude.SystemPrompt
+	}
+
+	if effectiveSystemPrompt != "" {
+		if appendSystemPrompt || cfg.Claude.SystemPromptMode == "append" {
+			args = append(args, "--append-system-prompt", effectiveSystemPrompt)
+		} else {
+			args = append(args, "--system-prompt", effectiveSystemPrompt)
+		}
+	}
+
+	// Handle minimax verbose mode
+	if useMinimax && cfg.Claude.MinimaxVerbose {
+		args = append(args, "--verbose")
 	}
 
 	opts := launcher.LaunchOptions{

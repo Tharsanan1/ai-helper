@@ -22,6 +22,8 @@ var (
 	switchCopilot      bool
 	switchClaude       bool
 	switchMinimax      bool
+	switchSystemPrompt string
+	switchAppendSystemPrompt bool
 	switchTerminalName string
 	switchSandbox      bool
 )
@@ -71,6 +73,8 @@ func RegisterSwitchFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&switchCopilot, "copilot", false, "Launch Copilot CLI instead of Claude")
 	cmd.Flags().BoolVar(&switchClaude, "claude", false, "Launch Claude (explicitly, useful for overriding defaults)")
 	cmd.Flags().BoolVar(&switchMinimax, "minimax", false, "Launch Claude with Minimax APIs (requires minimax_api_key in config)")
+	cmd.Flags().StringVar(&switchSystemPrompt, "system-prompt", "", "System prompt to use when launching Claude (overrides config)")
+	cmd.Flags().BoolVar(&switchAppendSystemPrompt, "append-system-prompt", false, "Append system prompt instead of replacing")
 	cmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 	cmd.Flags().BoolVar(&switchSandbox, "sandbox", false, "Launch agent in a docker sandbox")
 }
@@ -208,6 +212,25 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			}
 			env["ANTHROPIC_BASE_URL"] = "https://api.minimax.io/anthropic"
 			env["ANTHROPIC_API_KEY"] = cfg.Claude.MinimaxAPIKey
+		}
+
+		// Handle system prompt
+		effectiveSystemPrompt := switchSystemPrompt
+		if effectiveSystemPrompt == "" && cfg.Claude.UseSystemPrompt {
+			effectiveSystemPrompt = cfg.Claude.SystemPrompt
+		}
+
+		if effectiveSystemPrompt != "" {
+			if switchAppendSystemPrompt || cfg.Claude.SystemPromptMode == "append" {
+				args = append(args, "--append-system-prompt", effectiveSystemPrompt)
+			} else {
+				args = append(args, "--system-prompt", effectiveSystemPrompt)
+			}
+		}
+
+		// Handle minimax verbose mode
+		if launchMinimax && cfg.Claude.MinimaxVerbose {
+			args = append(args, "--verbose")
 		}
 
 		opts := launcher.LaunchOptions{
