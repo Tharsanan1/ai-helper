@@ -76,11 +76,31 @@ Examples:
   aihelper worktree create feature-x --droid
 
   # Create worktree and launch Copilot CLI instead of Claude
-   # Create worktree and launch Claude (explicitly)
-   aihelper worktree create feature-x --claude
+  aihelper worktree create feature-x --copilot
+
+  # Create worktree and launch Claude (explicitly)
+  aihelper worktree create feature-x --claude
 
   # Create worktree and launch Claude with Minimax APIs
-   aihelper worktree create feature-x --minimax`,
+  aihelper worktree create feature-x --minimax
+
+  # Create worktree with custom system prompt
+  aihelper worktree create feature-x --system-prompt "You are a senior engineer"
+
+  # Create worktree and append system prompt
+  aihelper worktree create feature-x --system-prompt "Focus on testing" --append-system-prompt
+
+  # Create worktree in a new terminal with custom name
+  aihelper worktree create feature-x --new-terminal --terminal-name "Feature X"
+
+  # Create worktree in Docker sandbox
+  aihelper worktree create feature-x --sandbox
+
+  # Create with custom Claude mode and arguments
+  aihelper worktree create feature-x --claude-mode chat --claude-args "--dangerously-skip-permissions"
+
+  # Create at custom location
+  aihelper worktree create feature-x -l ~/custom/worktrees`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCreate,
 }

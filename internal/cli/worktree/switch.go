@@ -54,11 +54,28 @@ Examples:
   aihelper worktree switch feature-auth --droid
 
   # Switch and launch Copilot CLI instead of Claude
-   # Switch and launch Claude (explicitly)
-   aihelper worktree switch feature-auth --claude
+  aihelper worktree switch feature-auth --copilot
+
+  # Switch and launch Claude (explicitly)
+  aihelper worktree switch feature-auth --claude
 
   # Switch and launch Claude with Minimax APIs
-   aihelper worktree switch feature-auth --minimax`,
+  aihelper worktree switch feature-auth --minimax
+
+  # Switch with custom system prompt
+  aihelper worktree switch feature-auth --system-prompt "You are a senior engineer"
+
+  # Switch and append system prompt
+  aihelper worktree switch feature-auth --system-prompt "Focus on testing" --append-system-prompt
+
+  # Switch with custom terminal name
+  aihelper worktree switch feature-auth --terminal-name "Feature Auth"
+
+  # Switch in Docker sandbox
+  aihelper worktree switch feature-auth --sandbox
+
+  # Switch with custom Claude arguments
+  aihelper worktree switch feature-auth --claude-args "--dangerously-skip-permissions"`,
 	Args: cobra.ExactArgs(1),
 	RunE: runSwitch,
 }
