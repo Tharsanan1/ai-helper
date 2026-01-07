@@ -418,7 +418,7 @@ func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Conf
 		effectiveSystemPrompt = cfg.Claude.SystemPrompt
 	}
 
-	if effectiveSystemPrompt != "" {
+	if useMinimax && effectiveSystemPrompt != "" {
 		if appendSystemPrompt || cfg.Claude.SystemPromptMode == "append" {
 			args = append(args, "--append-system-prompt", effectiveSystemPrompt)
 		} else {

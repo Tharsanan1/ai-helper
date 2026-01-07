@@ -220,7 +220,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			effectiveSystemPrompt = cfg.Claude.SystemPrompt
 		}
 
-		if effectiveSystemPrompt != "" {
+		if launchMinimax && effectiveSystemPrompt != "" {
 			if switchAppendSystemPrompt || cfg.Claude.SystemPromptMode == "append" {
 				args = append(args, "--append-system-prompt", effectiveSystemPrompt)
 			} else {
