@@ -35,12 +35,14 @@ removing, and switching between git worktrees.`,
 
 	// Create shortcuts that delegate to worktree subcommands
 	CreateShortcutCmd = &cobra.Command{
-		Use:     "c <name>",
+		Use:     "c [name]",
 		Aliases: []string{"new"},
 		Short:   "Create a new worktree",
 		Example: `  aihelper c feature-auth
+  aihelper c --issue 123
+  aihelper c --pr 456
   aihelper c feature-auth -b auth/login`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: RunCreate,
 	}
 

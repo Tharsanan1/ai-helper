@@ -1,13 +1,20 @@
 package worktree
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
+	"regexp"
+	"strings"
+	"bufio"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/tharsanan1/ai-helper/internal/config"
 	"github.com/tharsanan1/ai-helper/internal/git"
+	"github.com/tharsanan1/ai-helper/internal/gh"
 	"github.com/tharsanan1/ai-helper/internal/launcher"
 	"github.com/tharsanan1/ai-helper/internal/util"
 	"github.com/tharsanan1/ai-helper/internal/worktree"
@@ -18,6 +25,8 @@ var (
 	createBranch         string
 	createLocation       string
 	createFrom           string
+	createIssue          int
+	createPR             int
 	createNoClaude       bool
 	createClaudeMode     string
 	createClaudeArgs     []string
@@ -37,71 +46,20 @@ var (
 
 // createCmd represents the create command
 var createCmd = &cobra.Command{
-	Use:     "create <name>",
+	Use:     "create [name]",
 	Aliases: []string{"c", "new"},
 	Short:   "Create a new worktree and optionally launch Claude",
 	Long: `Create a new git worktree with the specified name and optionally launch Claude Code CLI.
 
-The create command will:
-1. Create a new branch (or use an existing one)
-2. Create a git worktree at the configured location
-3. Launch Claude Code CLI in the worktree directory (unless --no-claude is specified)
+If --issue is provided, the [name] argument is optional and will be automatically generated from the issue.
 
 Examples:
-  # Create a worktree and launch Claude
-  aihelper worktree create feature-auth
+  # Create a worktree from a GitHub issue (name auto-generated)
+  aihelper worktree create --issue 123
 
-  # Create and launch agent in a new terminal window
-  aihelper worktree create feature-auth --copilot --new-terminal
-
-  # Create with custom branch name
-  aihelper worktree create feature-auth -b auth/login
-
-  # Create from specific source branch
-  aihelper worktree create hotfix -f main -b hotfix/security
-
-  # Create without launching Claude
-  aihelper worktree create experiment --no-claude
-
-  # Use an existing branch
-  aihelper worktree create feature-x -b existing-branch --existing-branch
-
-  # Create worktree and launch OpenCode instead of Claude
-  aihelper worktree create feature-x --opencode
-
-  # Create worktree and launch Gemini CLI instead of Claude
-  aihelper worktree create feature-x --gemini
-
-  # Create worktree and launch Droid CLI instead of Claude
-  aihelper worktree create feature-x --droid
-
-  # Create worktree and launch Copilot CLI instead of Claude
-  aihelper worktree create feature-x --copilot
-
-  # Create worktree and launch Claude (explicitly)
-  aihelper worktree create feature-x --claude
-
-  # Create worktree and launch Claude with Minimax APIs
-  aihelper worktree create feature-x --minimax
-
-  # Create worktree with custom system prompt
-  aihelper worktree create feature-x --system-prompt "You are a senior engineer"
-
-  # Create worktree and append system prompt
-  aihelper worktree create feature-x --system-prompt "Focus on testing" --append-system-prompt
-
-  # Create worktree in a new terminal with custom name
-  aihelper worktree create feature-x --new-terminal --terminal-name "Feature X"
-
-  # Create worktree in Docker sandbox
-  aihelper worktree create feature-x --sandbox
-
-  # Create with custom Claude mode and arguments
-  aihelper worktree create feature-x --claude-mode chat --claude-args "--dangerously-skip-permissions"
-
-  # Create at custom location
-  aihelper worktree create feature-x -l ~/custom/worktrees`,
-	Args: cobra.ExactArgs(1),
+  # Create a worktree with a specific name and launch Claude
+  aihelper worktree create feature-auth`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: runCreate,
 }
 
@@ -110,6 +68,8 @@ func RegisterCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&createBranch, "branch", "b", "", "Branch name (default: same as worktree name)")
 	cmd.Flags().StringVarP(&createLocation, "location", "l", "", "Base directory for worktrees (default from config)")
 	cmd.Flags().StringVarP(&createFrom, "from", "f", "", "Source branch to create from (default: current branch)")
+	cmd.Flags().IntVarP(&createIssue, "issue", "i", 0, "Create worktree from GitHub issue number")
+	cmd.Flags().IntVarP(&createPR, "pr", "p", 0, "Create worktree from GitHub pull request number")
 	cmd.Flags().BoolVar(&createNoClaude, "no-claude", false, "Create worktree without launching Claude")
 	cmd.Flags().StringVar(&createClaudeMode, "claude-mode", "", "Claude mode: chat, agent (default from config)")
 	cmd.Flags().StringSliceVar(&createClaudeArgs, "claude-args", []string{}, "Additional arguments to pass to Claude CLI")
@@ -137,7 +97,14 @@ func init() {
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
-	name := args[0]
+	var name string
+	if len(args) > 0 {
+		name = args[0]
+	}
+
+	if name == "" && createIssue == 0 && createPR == 0 {
+		return fmt.Errorf("accepts 1 arg(s), received 0 (or provide --issue or --pr to auto-generate name)")
+	}
 
 	// Get config manager
 	cfgManager, err := util.GlobalContext.GetConfigManager()
@@ -154,6 +121,234 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	gitClient, err := git.NewClient()
 	if err != nil {
 		return fmt.Errorf("failed to initialize git client: %w", err)
+	}
+
+	// Handle PR flag
+	if createPR > 0 {
+		ghClient := gh.NewClient()
+		if !ghClient.IsAvailable() {
+			return fmt.Errorf("gh cli not found. Please install it to use --pr flag")
+		}
+
+		var pr *gh.PR
+		var prErr error
+		var remoteName string
+
+		// 1. Try upstream
+		upstreamURL, err := gitClient.GetRemoteURL("upstream")
+		if err == nil && upstreamURL != "" {
+			s := util.NewSpinner(fmt.Sprintf("Fetching PR #%d from upstream (%s)...", createPR, upstreamURL))
+			s.Start()
+			pr, prErr = ghClient.GetPR(upstreamURL, createPR)
+			s.Stop()
+			if prErr == nil {
+				remoteName = "upstream"
+			} else if util.GlobalContext.IsVerbose() {
+				fmt.Printf("PR not found in upstream: %v\n", prErr)
+			}
+		}
+
+		// 2. Try origin (if upstream failed or didn't exist)
+		if pr == nil {
+			originURL, err := gitClient.GetRemoteURL("origin")
+			if err != nil {
+				return fmt.Errorf("failed to get origin remote: %w", err)
+			}
+
+			s := util.NewSpinner(fmt.Sprintf("Fetching PR #%d from origin (%s)...", createPR, originURL))
+			s.Start()
+			pr, err = ghClient.GetPR(originURL, createPR)
+			s.Stop()
+			if err != nil {
+				return fmt.Errorf("PR #%d not found in origin or upstream: %w", createPR, err)
+			}
+			remoteName = "origin"
+		}
+
+		// PR found!
+		if util.GlobalContext.IsColorEnabled() {
+			color.Green("✓ Found PR: %s\n", pr.Title)
+		} else {
+			fmt.Printf("Found PR: %s\n", pr.Title)
+		}
+
+		// Determine branch name
+		// Format: pr-<number>-<sanitized-title>
+		if createBranch == "" {
+			reg := regexp.MustCompile("[^a-zA-Z0-9]+")
+			cleanTitle := reg.ReplaceAllString(strings.ToLower(pr.Title), "-")
+			cleanTitle = strings.Trim(cleanTitle, "-")
+			// Limit length
+			if len(cleanTitle) > 50 {
+				cleanTitle = cleanTitle[:50]
+				cleanTitle = strings.TrimRight(cleanTitle, "-")
+			}
+			createBranch = fmt.Sprintf("pr-%d-%s", pr.Number, cleanTitle)
+		}
+		
+		if name == "" {
+			name = createBranch
+		}
+
+		// Check if worktree already exists for this branch or path
+		wtManager := worktree.NewManager(gitClient, cfg)
+		wts, err := wtManager.List()
+		if err == nil {
+			for _, wt := range wts {
+				if wt.Branch == createBranch || strings.HasSuffix(wt.Path, name) {
+					if util.GlobalContext.IsColorEnabled() {
+						color.Green("✓ Worktree already exists for PR #%d at %s\n", createPR, wt.Path)
+					} else {
+						fmt.Printf("Worktree already exists for PR #%d at %s\n", createPR, wt.Path)
+					}
+					// Launch tool directly
+					return launchTool(wt.Path, name, cfg, createSystemPrompt, createAppendSystemPrompt)
+				}
+			}
+		}
+
+		// Check if branch exists locally
+		exists, err := gitClient.BranchExists(createBranch)
+		if err != nil {
+			return fmt.Errorf("failed to check if branch exists: %w", err)
+		}
+
+		if !exists {
+			// Fetch PR to local branch
+			// git fetch <remote> pull/<id>/head:<local-branch>
+			refSpec := fmt.Sprintf("pull/%d/head:%s", pr.Number, createBranch)
+			s := util.NewSpinner(fmt.Sprintf("Fetching PR code to branch %s...", createBranch))
+			s.Start()
+			err = gitClient.FetchRef(remoteName, refSpec)
+			s.Stop()
+			if err != nil {
+				return fmt.Errorf("failed to fetch PR code: %w", err)
+			}
+			if util.GlobalContext.IsColorEnabled() {
+				color.Green("✓ Fetched PR code to branch: %s\n", createBranch)
+			} else {
+				fmt.Printf("Fetched PR code to branch: %s\n", createBranch)
+			}
+		}
+
+		// Ensure we use the existing branch (since we just created/verified it)
+		createExistingBranch = true
+
+		// Set system prompt
+		prContext := fmt.Sprintf("You are reviewing GitHub PR #%d: %s\n\nDescription:\n%s\n\nBranch: %s", pr.Number, pr.Title, pr.Body, pr.HeadRefName)
+		if createSystemPrompt != "" {
+			createSystemPrompt = prContext + "\n\nAdditional Instructions:\n" + createSystemPrompt
+		} else {
+			createSystemPrompt = prContext
+		}
+	}
+
+	// Handle issue flag
+	if createIssue > 0 {
+		ghClient := gh.NewClient()
+		if !ghClient.IsAvailable() {
+			return fmt.Errorf("gh cli not found. Please install it to use --issue flag")
+		}
+
+		var issue *gh.Issue
+		var issueErr error
+
+		// 1. Try upstream
+		upstreamURL, err := gitClient.GetRemoteURL("upstream")
+		if err == nil && upstreamURL != "" {
+			s := util.NewSpinner(fmt.Sprintf("Fetching issue #%d from upstream (%s)...", createIssue, upstreamURL))
+			s.Start()
+			issue, issueErr = ghClient.GetIssue(upstreamURL, createIssue)
+			s.Stop()
+			if issueErr != nil {
+				// Upstream exists but issue fetch failed (likely not found)
+				if util.GlobalContext.IsVerbose() {
+					fmt.Printf("Issue not found in upstream: %v\n", issueErr)
+				}
+				
+				// Prompt user to check origin
+				fmt.Printf("Issue #%d not found in upstream. Fetch from origin? [y/N] ", createIssue)
+				reader := bufio.NewReader(os.Stdin)
+				response, _ := reader.ReadString('\n')
+				response = strings.TrimSpace(strings.ToLower(response))
+
+				if response != "y" && response != "yes" {
+					return fmt.Errorf("issue not found in upstream and fallback cancelled")
+				}
+			}
+		}
+
+		// 2. Try origin (if upstream failed or didn't exist)
+		if issue == nil {
+			originURL, err := gitClient.GetRemoteURL("origin")
+			if err != nil {
+				return fmt.Errorf("failed to get origin remote: %w", err)
+			}
+
+			s := util.NewSpinner(fmt.Sprintf("Fetching issue #%d from origin (%s)...", createIssue, originURL))
+			s.Start()
+			issue, err = ghClient.GetIssue(originURL, createIssue)
+			s.Stop()
+			if err != nil {
+				return fmt.Errorf("issue #%d not found in origin or upstream: %w", createIssue, err)
+			}
+		}
+
+		// Issue found! Configure worktree options
+		if util.GlobalContext.IsColorEnabled() {
+			color.Green("✓ Found issue: %s\n", issue.Title)
+		} else {
+			fmt.Printf("Found issue: %s\n", issue.Title)
+		}
+
+		// Generate branch name if not provided
+		if createBranch == "" {
+			// Try Gemini first
+			if _, err := exec.LookPath("gemini"); err == nil {
+				s := util.NewSpinner("Generating branch name from issue using Gemini...")
+				s.Start()
+				prompt := fmt.Sprintf("Generate a concise, standard git branch name for GitHub Issue #%d: '%s'. The format MUST be 'issue/%d/<short-kebab-case-description>'. Return ONLY the branch name, no other text.", issue.Number, issue.Title, issue.Number)
+				cmd := exec.Command("gemini", prompt)
+				var out bytes.Buffer
+				cmd.Stdout = &out
+				runErr := cmd.Run()
+				s.Stop()
+				if runErr == nil {
+					generatedName := strings.TrimSpace(out.String())
+					// Basic validation: ensure it doesn't contain spaces or newlines and looks like a branch name
+					if generatedName != "" && !strings.ContainsAny(generatedName, " \n\t") {
+						createBranch = generatedName
+						fmt.Printf("Generated branch name: %s\n", createBranch)
+					}
+				} else if util.GlobalContext.IsVerbose() {
+					fmt.Printf("Gemini branch name generation failed: %v\n", runErr)
+				}
+			}
+
+			// Fallback if Gemini failed or returned empty
+			if createBranch == "" {
+				// Sanitize title: lowercase, replace non-alphanumeric with hyphens
+				reg := regexp.MustCompile("[^a-zA-Z0-9]+")
+				cleanTitle := reg.ReplaceAllString(strings.ToLower(issue.Title), "-")
+				cleanTitle = strings.Trim(cleanTitle, "-")
+				createBranch = fmt.Sprintf("issue-%d-%s", issue.Number, cleanTitle)
+				fmt.Printf("Auto-generated branch name: %s\n", createBranch)
+			}
+		}
+
+		// If name still empty, use a sanitized version of the branch name (removing slashes)
+		if name == "" {
+			name = strings.ReplaceAll(createBranch, "/", "-")
+		}
+
+		// Set system prompt
+		issueContext := fmt.Sprintf("You are working on GitHub Issue #%d: %s\n\nDescription:\n%s", issue.Number, issue.Title, issue.Body)
+		if createSystemPrompt != "" {
+			// Prepend issue context to user-provided system prompt
+			createSystemPrompt = issueContext + "\n\nAdditional Instructions:\n" + createSystemPrompt
+		} else {
+			createSystemPrompt = issueContext
+		}
 	}
 
 	// Create worktree manager
@@ -198,6 +393,10 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Determine which CLI to launch
+	return launchTool(worktreePath, name, cfg, createSystemPrompt, createAppendSystemPrompt)
+}
+
+func launchTool(worktreePath string, name string, cfg *config.Config, systemPrompt string, appendSystemPrompt bool) error {
 	// Priority: explicit flags > default CLI > claude (if auto-launch enabled)
 	launchOpenCode := createOpenCode
 	launchGemini := createGemini
@@ -264,7 +463,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 	} else if launchClaude || launchMinimax {
-		if err := launchClaudeTool(worktreePath, name, cfg, launchMinimax, createSystemPrompt, createAppendSystemPrompt); err != nil {
+		if err := launchClaudeTool(worktreePath, name, cfg, launchMinimax, systemPrompt, appendSystemPrompt); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch Claude: %v\n", err)
 			} else {

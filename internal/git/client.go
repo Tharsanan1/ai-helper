@@ -235,6 +235,17 @@ func (c *Client) GetRemoteURL(name string) (string, error) {
 	return strings.TrimSpace(stdout.String()), nil
 }
 
+// FetchRef fetches a specific reference from a remote
+func (c *Client) FetchRef(remote, refSpec string) error {
+	cmd := exec.Command("git", "fetch", remote, refSpec)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to fetch ref %s from %s: %s", refSpec, remote, stderr.String())
+	}
+	return nil
+}
+
 // GetCommitLogs returns the commit logs between base and head
 func (c *Client) GetCommitLogs(base, head string) (string, error) {
 	cmd := exec.Command("git", "log", "--no-merges", "--pretty=format:%h %s", fmt.Sprintf("%s..%s", base, head))
