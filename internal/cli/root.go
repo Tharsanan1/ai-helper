@@ -3,6 +3,7 @@ package cli
 import (
 	"github.com/spf13/cobra"
 	cliConfig "github.com/tharsanan1/ai-helper/internal/cli/config"
+	"github.com/tharsanan1/ai-helper/internal/cli/pr"
 	"github.com/tharsanan1/ai-helper/internal/cli/worktree"
 	"github.com/tharsanan1/ai-helper/internal/util"
 )
@@ -43,6 +44,7 @@ func init() {
 	// Add command groups
 	rootCmd.AddCommand(worktree.WorktreeCmd)
 	rootCmd.AddCommand(cliConfig.ConfigCmd)
+	rootCmd.AddCommand(pr.PrCmd)
 
 	// Add single-letter shortcuts
 	rootCmd.AddCommand(worktree.CreateShortcutCmd)

@@ -92,6 +92,15 @@ func (c *Client) BranchExists(branch string) (bool, error) {
 	return true, nil
 }
 
+// RefExists checks if a reference exists (e.g., local branch, remote branch, tag)
+func (c *Client) RefExists(ref string) (bool, error) {
+	cmd := exec.Command("git", "rev-parse", "--verify", ref)
+	if err := cmd.Run(); err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
 // CreateBranch creates a new branch from the specified source branch
 func (c *Client) CreateBranch(name, from string) error {
 	cmd := exec.Command("git", "branch", name, from)
@@ -172,6 +181,69 @@ func (c *Client) DeleteBranch(branch string) error {
 	}
 
 	return nil
+}
+
+// HasUnpushedCommits checks if the current branch has commits not pushed to origin
+func (c *Client) HasUnpushedCommits(branch string) (bool, error) {
+	// Check if remote branch exists
+	err := exec.Command("git", "ls-remote", "--exit-code", "--heads", "origin", branch).Run()
+	if err != nil {
+		// Remote branch doesn't exist, so all commits are unpushed (if any)
+		return true, nil
+	}
+
+	// Check for commits ahead of origin
+	cmd := exec.Command("git", "rev-list", "--count", "origin/"+branch+"..HEAD")
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		return false, fmt.Errorf("failed to check unpushed commits: %w", err)
+	}
+
+	count := strings.TrimSpace(stdout.String())
+	return count != "0", nil
+}
+
+// Push pushes the specified branch to origin
+func (c *Client) Push(branch string) error {
+	cmd := exec.Command("git", "push", "-u", "origin", branch)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to push branch: %s", stderr.String())
+	}
+	return nil
+}
+
+// HasRemote checks if a remote with the given name exists
+func (c *Client) HasRemote(name string) (bool, error) {
+	cmd := exec.Command("git", "remote", "get-url", name)
+	if err := cmd.Run(); err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+// GetRemoteURL returns the URL of the remote with the given name
+func (c *Client) GetRemoteURL(name string) (string, error) {
+	cmd := exec.Command("git", "remote", "get-url", name)
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("remote %s not found", name)
+	}
+	return strings.TrimSpace(stdout.String()), nil
+}
+
+// GetCommitLogs returns the commit logs between base and head
+func (c *Client) GetCommitLogs(base, head string) (string, error) {
+	cmd := exec.Command("git", "log", "--no-merges", "--pretty=format:%h %s", fmt.Sprintf("%s..%s", base, head))
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to get commit logs: %w", err)
+	}
+	return stdout.String(), nil
 }
 
 // parseWorktreeList parses the porcelain output of git worktree list
