@@ -125,6 +125,11 @@ func RegisterCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 	cmd.Flags().BoolVar(&createNewTerminal, "new-terminal", false, "Launch agent in a new terminal window")
 	cmd.Flags().BoolVar(&createSandbox, "sandbox", false, "Launch agent in a docker sandbox")
+
+	// Register flag completion
+	_ = cmd.RegisterFlagCompletionFunc("claude-mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"chat", "agent"}, cobra.ShellCompDirectiveNoFileComp
+	})
 }
 
 func init() {

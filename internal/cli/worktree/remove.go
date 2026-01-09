@@ -40,8 +40,9 @@ Examples:
 
   # Force remove worktrees with untracked files
   aihelper worktree remove feature-auth --force`,
-	Args: cobra.MinimumNArgs(1),
-	RunE: runRemove,
+	Args:              cobra.MinimumNArgs(1),
+	ValidArgsFunction: getWorktreeNames,
+	RunE:              runRemove,
 }
 
 // RegisterRemoveFlags registers flags for the remove command

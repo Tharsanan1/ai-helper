@@ -29,7 +29,47 @@ Examples:
   aihelper config set global.verbosity 2
   aihelper config set global.default_cli gemini`,
 	Args: cobra.ExactArgs(2),
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) == 0 {
+			return getConfigKeys(), cobra.ShellCompDirectiveNoFileComp
+		}
+		// For the second argument (value), we could provide suggestions based on the key
+		if len(args) == 1 {
+			key := args[0]
+			switch key {
+			case "claude.default_mode":
+				return []string{"agent", "chat"}, cobra.ShellCompDirectiveNoFileComp
+			case "claude.system_prompt_mode":
+				return []string{"replace", "append"}, cobra.ShellCompDirectiveNoFileComp
+			case "global.default_cli":
+				return []string{"claude", "gemini", "copilot", "droid", "opencode"}, cobra.ShellCompDirectiveNoFileComp
+			case "worktree.auto_cleanup", "claude.auto_launch", "claude.use_system_prompt", "claude.minimax_verbose", "global.color":
+				return []string{"true", "false"}, cobra.ShellCompDirectiveNoFileComp
+			}
+		}
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	},
 	RunE: runSet,
+}
+
+func getConfigKeys() []string {
+	return []string{
+		"worktree.base_location",
+		"worktree.auto_cleanup",
+		"worktree.default_source_branch",
+		"claude.default_mode",
+		"claude.auto_launch",
+		"claude.cli_path",
+		"claude.minimax_api_key",
+		"claude.system_prompt",
+		"claude.system_prompt_mode",
+		"claude.use_system_prompt",
+		"claude.minimax_verbose",
+		"global.verbosity",
+		"global.color",
+		"global.editor",
+		"global.default_cli",
+	}
 }
 
 func init() {

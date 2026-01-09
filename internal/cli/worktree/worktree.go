@@ -2,6 +2,9 @@ package worktree
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/tharsanan1/ai-helper/internal/git"
+	"github.com/tharsanan1/ai-helper/internal/util"
+	"github.com/tharsanan1/ai-helper/internal/worktree"
 )
 
 var (
@@ -43,12 +46,13 @@ removing, and switching between git worktrees.`,
 
 	SwitchShortcutCmd = &cobra.Command{
 		Use:     "sw <name>",
-		Aliases: []string{"go"},
+		Aliases: []string{"go", "ws"},
 		Short:   "Switch to an existing worktree",
 		Example: `  aihelper sw feature-auth
   aihelper sw feature-auth --claude-mode chat`,
-		Args: cobra.ExactArgs(1),
-		RunE: RunSwitch,
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: getWorktreeNames,
+		RunE:              RunSwitch,
 	}
 
 	ListShortcutCmd = &cobra.Command{
@@ -65,12 +69,49 @@ removing, and switching between git worktrees.`,
 		Short:   "Remove worktrees",
 		Example: `  aihelper r feature-auth
   aihelper r feature-auth --delete-branch`,
-		Args: cobra.MinimumNArgs(1),
-		RunE: RunRemove,
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: getWorktreeNames,
+		RunE:              RunRemove,
 	}
 
 	// Register flags for shortcuts
 	RegisterCreateFlags(CreateShortcutCmd)
 	RegisterSwitchFlags(SwitchShortcutCmd)
 	RegisterRemoveFlags(RemoveShortcutCmd)
+}
+
+func getWorktreeNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 && cmd.Name() != "r" && cmd.Name() != "remove" && cmd.Name() != "rm" && cmd.Name() != "del" {
+		// Only remove command accepts multiple args
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	// Initialize dependencies
+	cfgManager, err := util.GlobalContext.GetConfigManager()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	cfg, err := cfgManager.Get()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	gitClient, err := git.NewClient()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	wtManager := worktree.NewManager(gitClient, cfg)
+	worktrees, err := wtManager.List()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	names := make([]string, 0, len(worktrees))
+	for _, wt := range worktrees {
+		names = append(names, wt.Name)
+	}
+
+	return names, cobra.ShellCompDirectiveNoFileComp
 }

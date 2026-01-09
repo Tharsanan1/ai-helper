@@ -75,11 +75,12 @@ Examples:
   aihelper worktree switch feature-auth --sandbox
 
   # Switch with custom Claude arguments
-  aihelper worktree switch feature-auth --claude-args "--dangerously-skip-permissions"`,
-	Args: cobra.ExactArgs(1),
-	RunE: runSwitch,
-}
-
+  	aihelper worktree switch feature-auth --claude-args "--dangerously-skip-permissions"`,
+  	Args:              cobra.ExactArgs(1),
+  	ValidArgsFunction: getWorktreeNames,
+  	RunE:              runSwitch,
+  }
+  
 // RegisterSwitchFlags registers flags for the switch command
 func RegisterSwitchFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&switchClaudeMode, "claude-mode", "", "Claude mode: chat, agent (default from config)")
@@ -94,6 +95,11 @@ func RegisterSwitchFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&switchAppendSystemPrompt, "append-system-prompt", false, "Append system prompt instead of replacing")
 	cmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
 	cmd.Flags().BoolVar(&switchSandbox, "sandbox", false, "Launch agent in a docker sandbox")
+
+	// Register flag completion
+	_ = cmd.RegisterFlagCompletionFunc("claude-mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"chat", "agent"}, cobra.ShellCompDirectiveNoFileComp
+	})
 }
 
 func init() {
