@@ -42,6 +42,37 @@ sudo mv aihelper /usr/local/bin/
 
 ---
 
+## Shell Completion
+
+AI Helper provides rich shell completion for Bash, Zsh, Fish, and PowerShell. This feature is highly recommended as it improves productivity by:
+
+- Automatically completing commands and flags
+- Providing descriptions for flags (Zsh)
+- Dynamically completing values (e.g., Claude modes)
+
+### Zsh Setup (Recommended)
+
+To enable rich Zsh completion with descriptions:
+
+```bash
+# 1. Create a completion directory
+mkdir -p ~/.zsh/completions
+
+# 2. Generate completion script
+aihelper completion zsh > ~/.zsh/completions/_aihelper
+
+# 3. Add to your ~/.zshrc (if not already present):
+echo 'fpath=(~/.zsh/completions $fpath)' >> ~/.zshrc
+echo 'autoload -U compinit; compinit' >> ~/.zshrc
+
+# 4. Reload shell
+source ~/.zshrc
+```
+
+For other shells, see the [Installation Guide](INSTALL.md#3-shell-completion-recommended).
+
+---
+
 ## Quick Start
 
 ### Create a Worktree

@@ -14,29 +14,29 @@ curl -fsSL https://raw.githubusercontent.com/tharsanan1/ai-helper/main/install.s
 ### Daily Usage
 ```bash
 # Create worktree
-ctl worktree create feature-name
+aihelper worktree create feature-name
 
 # List worktrees
-ctl worktree list
+aihelper worktree list
 
 # Switch to worktree
-ctl worktree switch feature-name
+aihelper worktree switch feature-name
 
 # Remove worktree
-ctl worktree remove feature-name -d
+aihelper worktree remove feature-name -d
 ```
 
 ### Configuration
 ```bash
 # View config
-ctl config list
+aihelper config list
 
 # Set config
-ctl config set worktree.base_location ~/worktrees
-ctl config set claude.auto_launch false
+aihelper config set worktree.base_location ~/worktrees
+aihelper config set claude.auto_launch false
 
 # Get config
-ctl config get claude.auto_launch
+aihelper config get claude.auto_launch
 ```
 
 ---
@@ -50,7 +50,7 @@ vim internal/whatever.go
 
 # 2. Test
 make build
-./ctl --help
+./aihelper --help
 
 # 3. Commit and push
 git add .
@@ -125,7 +125,7 @@ curl -fsSL https://raw.githubusercontent.com/tharsanan1/ai-helper/main/install.s
 vim internal/whatever.go
 
 # 2. Test
-make build && ./ctl test-command
+make build && ./aihelper test-command
 
 # 3. Bump patch version
 vim internal/cli/root.go  # 0.1.0 -> 0.1.1
@@ -143,7 +143,7 @@ git push origin main --tags
 ls ../.worktrees/$(basename $(git rev-parse --show-toplevel))
 
 # Or use
-ctl worktree list
+aihelper worktree list
 ```
 
 ### Maintainer: "Need to test before release"
@@ -152,14 +152,14 @@ ctl worktree list
 make build
 
 # Test commands
-./ctl --version
-./ctl worktree create test --no-claude
-./ctl worktree list
-./ctl worktree remove test -d
+./aihelper --version
+./aihelper worktree create test --no-claude
+./aihelper worktree list
+./aihelper worktree remove test -d
 
 # Test install
 make install-user
-ctl --version
+aihelper --version
 ```
 
 ---
@@ -173,7 +173,7 @@ User files:
   ../.worktrees/               # Worktrees
 
 Project files:
-  cmd/ctl/main.go             # Entry point
+  cmd/aihelper/main.go             # Entry point
   internal/cli/               # Commands
   internal/worktree/          # Business logic
   go.mod                      # Dependencies
@@ -185,10 +185,10 @@ Project files:
 ## Help Commands
 
 ```bash
-ctl --help                          # General help
-ctl worktree --help                 # Worktree help
-ctl worktree create --help          # Create help
-ctl config --help                   # Config help
+aihelper --help                          # General help
+aihelper worktree --help                 # Worktree help
+aihelper worktree create --help          # Create help
+aihelper config --help                   # Config help
 
 make help                           # Makefile help
 ```
@@ -199,16 +199,16 @@ make help                           # Makefile help
 
 ```bash
 # Check version
-ctl --version
+aihelper --version
 
 # Verbose mode
-ctl -v worktree create test
+aihelper -v worktree create test
 
 # Dry run
-ctl --dry-run worktree create test
+aihelper --dry-run worktree create test
 
 # Check config
-ctl config list
+aihelper config list
 
 # Rebuild
 make clean && make build

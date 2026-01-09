@@ -1,6 +1,6 @@
-# ctl - Git Worktree Manager with Claude Code Integration
+# AI Helper - Git Worktree Manager with Claude Code Integration
 
-`ctl` is a command-line tool for managing git worktrees with seamless integration for launching development tools like Claude Code CLI. It simplifies the workflow of creating isolated worktrees for feature development and automatically launches Claude in the worktree context.
+`aihelper` is a command-line tool for managing git worktrees with seamless integration for launching development tools like Claude Code CLI. It simplifies the workflow of creating isolated worktrees for feature development and automatically launches Claude in the worktree context.
 
 ## 🚀 Quick Install
 
@@ -14,8 +14,8 @@ curl -fsSL https://raw.githubusercontent.com/tharsanan1/ai-helper/main/install.s
 The installer will:
 - ✅ Check for Go and Git
 - ✅ Ask where to install (system-wide or user-only)
-- ✅ Build and install the `ctl` binary
-- ✅ Optionally set up shell completion
+- ✅ Build and install the `aihelper` binary
+- ✅ Optionally set up shell completion (including rich Zsh support!)
 - ✅ Verify the installation works
 
 No sudo required if you choose user-only installation!
@@ -30,6 +30,7 @@ No sudo required if you choose user-only installation!
 - **Flexible Configuration**: Global and per-repository configuration support
 - **Smart Defaults**: Sensible defaults with extensive customization options
 - **Clean CLI Interface**: Intuitive command structure following modern CLI conventions
+- **Rich Shell Completion**: Tab completion with descriptions for Zsh, plus Bash/Fish/PowerShell support
 
 ## Installation
 
@@ -68,13 +69,13 @@ git clone https://github.com/tharsanan1/ai-helper.git
 cd ai-helper
 
 # Build the binary
-go build -o ctl ./cmd/ctl
+go build -o aihelper ./cmd/aihelper
 
 # Move to a directory in your PATH
-sudo mv ctl /usr/local/bin/
+sudo mv aihelper /usr/local/bin/
 
 # Verify installation
-ctl --version
+aihelper --version
 ```
 
 ### Requirements
@@ -93,22 +94,22 @@ Create a new worktree and launch Claude:
 
 ```bash
 # Create a worktree named 'feature-auth' with a branch of the same name
-ctl worktree create feature-auth
+aihelper worktree create feature-auth
 
 # Create with a custom branch name
-ctl worktree create feature-auth -b auth/user-login
+aihelper worktree create feature-auth -b auth/user-login
 
 # Create from a specific source branch
-ctl worktree create hotfix -f main -b hotfix/security-patch
+aihelper worktree create hotfix -f main -b hotfix/security-patch
 
 # Create without launching Claude
-ctl worktree create experiment --no-claude
+aihelper worktree create experiment --no-claude
 ```
 
 ### List Worktrees
 
 ```bash
-ctl worktree list
+aihelper worktree list
 ```
 
 Output:
@@ -123,10 +124,10 @@ experiment           experiment                     e4f5g6h    /Users/you/Docume
 
 ```bash
 # Remove worktree only
-ctl worktree remove feature-auth
+aihelper worktree remove feature-auth
 
 # Remove worktree and delete the branch
-ctl worktree remove feature-auth --delete-branch
+aihelper worktree remove feature-auth --delete-branch
 ```
 
 ### Switch to a Worktree
@@ -134,14 +135,14 @@ ctl worktree remove feature-auth --delete-branch
 Launch Claude in an existing worktree:
 
 ```bash
-ctl worktree switch feature-auth
+aihelper worktree switch feature-auth
 ```
 
 ## Configuration
 
 ### Configuration Files
 
-`ctl` uses a layered configuration system:
+`aihelper` uses a layered configuration system:
 
 1. **Global config**: `~/.config/aihelper/config.yaml`
 2. **Repository config**: `.aihelper.yaml` (in repository root)
@@ -193,48 +194,48 @@ global:
 
 ```bash
 # View all configuration
-ctl config list
+aihelper config list
 
 # Get a specific value
-ctl config get worktree.base_location
+aihelper config get worktree.base_location
 
 # Set a value
-ctl config set claude.auto_launch false
-ctl config set worktree.base_location /custom/path
+aihelper config set claude.auto_launch false
+aihelper config set worktree.base_location /custom/path
 ```
 
 ### Switching Between AI CLIs
 
-By default, `ctl` launches Claude. You can use other AI tools or configure a default:
+By default, `aihelper` launches Claude. You can use other AI tools or configure a default:
 
 **Command-line flags** (override defaults):
 ```bash
 # Launch Gemini
-ctl worktree create feature-x --gemini
+aihelper worktree create feature-x --gemini
 
 # Launch Copilot
-ctl worktree create feature-x --copilot
+aihelper worktree create feature-x --copilot
 
 # Launch Droid
-ctl worktree create feature-x --droid
+aihelper worktree create feature-x --droid
 
 # Launch OpenCode
-ctl worktree create feature-x --opencode
+aihelper worktree create feature-x --opencode
 
 # Explicitly launch Claude (useful for overriding config defaults)
-ctl worktree create feature-x --claude
+aihelper worktree create feature-x --claude
 ```
 
 **Configuration-based default** (applies to both `create` and `switch` commands):
 ```bash
 # Set default CLI to Gemini
-ctl config set global.default_cli gemini
+aihelper config set global.default_cli gemini
 
 # Set default CLI to Copilot
-ctl config set global.default_cli copilot
+aihelper config set global.default_cli copilot
 
 # Reset to Claude (default)
-ctl config set global.default_cli claude
+aihelper config set global.default_cli claude
 ```
 
 Supported values for `global.default_cli`: `claude`, `gemini`, `copilot`, `droid`, `opencode`
@@ -357,7 +358,7 @@ Then reload your shell:
 source ~/.bashrc
 ```
 
-## Command Reference
+### Command Reference
 
 ### Global Flags
 
@@ -368,7 +369,7 @@ source ~/.bashrc
 
 ### Worktree Commands
 
-#### `ctl worktree create <name> [flags]`
+#### `aihelper worktree create <name> [flags]`
 
 Create a new git worktree.
 
@@ -389,25 +390,25 @@ Create a new git worktree.
 **Examples:**
 ```bash
 # Basic usage
-ctl worktree create feature-payment
+aihelper worktree create feature-payment
 
 # Custom branch name
-ctl worktree create feature-payment -b payment/stripe-integration
+aihelper worktree create feature-payment -b payment/stripe-integration
 
 # From specific branch
-ctl worktree create bugfix-123 -f develop
+aihelper worktree create bugfix-123 -f develop
 
 # Use existing branch
-ctl worktree create feature-x -b existing-feature --existing-branch
+aihelper worktree create feature-x -b existing-feature --existing-branch
 ```
 
-#### `ctl worktree list`
+#### `aihelper worktree list`
 
 List all worktrees with their branches and paths.
 
 **Aliases:** `ls`
 
-#### `ctl worktree remove <name> [flags]`
+#### `aihelper worktree remove <name> [flags]`
 
 Remove a worktree.
 
@@ -419,13 +420,13 @@ Remove a worktree.
 **Examples:**
 ```bash
 # Remove worktree only
-ctl worktree remove feature-payment
+aihelper worktree remove feature-payment
 
 # Remove worktree and delete branch
-ctl worktree remove feature-payment -d
+aihelper worktree remove feature-payment -d
 ```
 
-#### `ctl worktree switch <name> [flags]`
+#### `aihelper worktree switch <name> [flags]`
 
 Switch to an existing worktree and launch Claude (or other AI CLI based on config).
 
@@ -440,23 +441,23 @@ Switch to an existing worktree and launch Claude (or other AI CLI based on confi
 
 ### Config Commands
 
-#### `ctl config list`
+#### `aihelper config list`
 
 Display all configuration values.
 
 **Aliases:** `ls`, `show`
 
-#### `ctl config get <key>`
+#### `aihelper config get <key>`
 
 Get a specific configuration value.
 
 **Examples:**
 ```bash
-ctl config get worktree.base_location
-ctl config get claude.auto_launch
+aihelper config get worktree.base_location
+aihelper config get claude.auto_launch
 ```
 
-#### `ctl config set <key> <value>`
+#### `aihelper config set <key> <value>`
 
 Set a configuration value in global config.
 
@@ -465,9 +466,9 @@ Set a configuration value in global config.
 
 **Examples:**
 ```bash
-ctl config set worktree.base_location /custom/worktrees
-ctl config set claude.auto_launch false
-ctl config set global.verbosity 2
+aihelper config set worktree.base_location /custom/worktrees
+aihelper config set claude.auto_launch false
+aihelper config set global.verbosity 2
 ```
 
 ## Worktree Location Strategy
@@ -491,10 +492,10 @@ You can customize this location globally or per-command:
 
 ```bash
 # Global config
-ctl config set worktree.base_location /custom/path
+aihelper config set worktree.base_location /custom/path
 
 # Per-command
-ctl worktree create feature-x -l /custom/path
+aihelper worktree create feature-x -l /custom/path
 ```
 
 ## Development
@@ -503,7 +504,7 @@ ctl worktree create feature-x -l /custom/path
 
 ```
 ai-helper/
-├── cmd/ctl/                  # Application entry point
+├── cmd/aihelper/             # Application entry point
 ├── internal/
 │   ├── cli/                  # CLI commands
 │   │   ├── config/          # Config commands
@@ -521,11 +522,11 @@ ai-helper/
 
 ```bash
 # Build for current platform
-go build -o ctl ./cmd/ctl
+go build -o aihelper ./cmd/aihelper
 
 # Build for multiple platforms
-GOOS=linux GOARCH=amd64 go build -o ctl-linux-amd64 ./cmd/ctl
-GOOS=darwin GOARCH=arm64 go build -o ctl-darwin-arm64 ./cmd/ctl
+GOOS=linux GOARCH=amd64 go build -o aihelper-linux-amd64 ./cmd/aihelper
+GOOS=darwin GOARCH=arm64 go build -o aihelper-darwin-arm64 ./cmd/aihelper
 ```
 
 ### Testing
@@ -545,7 +546,7 @@ go test -v ./...
 
 ### Claude CLI Not Found
 
-If `ctl` can't find the Claude CLI:
+If `aihelper` can't find the Claude CLI:
 
 1. Ensure Claude is installed and in your PATH:
    ```bash
@@ -554,7 +555,7 @@ If `ctl` can't find the Claude CLI:
 
 2. Specify the path in config:
    ```bash
-   ctl config set claude.cli_path /path/to/claude
+   aihelper config set claude.cli_path /path/to/claude
    ```
 
 ### Worktree Already Exists
@@ -563,13 +564,13 @@ If you get an error that a worktree already exists:
 
 ```bash
 # List existing worktrees
-ctl worktree list
+aihelper worktree list
 
 # Remove the existing worktree
-ctl worktree remove <name>
+aihelper worktree remove <name>
 
 # Or switch to it
-ctl worktree switch <name>
+aihelper worktree switch <name>
 ```
 
 ### Permission Denied
@@ -583,7 +584,7 @@ If you get permission errors when creating worktrees:
 
 2. Use a different location:
    ```bash
-   ctl worktree create <name> -l ~/worktrees
+   aihelper worktree create <name> -l ~/worktrees
    ```
 
 ## Future Enhancements

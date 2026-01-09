@@ -1,4 +1,4 @@
-# Updating ctl
+# Updating aihelper
 
 ## For Users: How to Update
 
@@ -23,13 +23,13 @@ make install
 ### Using Go Install
 
 ```bash
-go install github.com/tharsanan1/ai-helper/cmd/ctl@latest
+go install github.com/tharsanan1/ai-helper/cmd/aihelper@latest
 ```
 
 ### Check Your Current Version
 
 ```bash
-ctl --version
+aihelper --version
 ```
 
 ---
@@ -44,7 +44,7 @@ vim internal/whatever.go
 
 # Test locally
 make build
-./ctl --help
+./aihelper --help
 
 # Commit and push
 git add .
@@ -60,7 +60,7 @@ Edit `internal/cli/root.go`:
 
 ```go
 var rootCmd = &cobra.Command{
-    Use:   "ctl",
+    Use:   "aihelper",
     Short: "...",
     Version: "0.2.0",  // Update this
 }
@@ -96,9 +96,8 @@ git tag -a v0.2.0 -m "Release version 0.2.0"
 
 # Push with tags
 git push origin main --tags
-```
 
-#### Build Release Binaries
+# Build Release Binaries
 
 ```bash
 # Build for all platforms
@@ -106,11 +105,11 @@ make release
 
 # Binaries will be in dist/
 ls dist/
-# ctl-darwin-amd64
-# ctl-darwin-arm64
-# ctl-linux-amd64
-# ctl-linux-arm64
-# ctl-windows-amd64.exe
+# aihelper-darwin-amd64
+# aihelper-darwin-arm64
+# aihelper-linux-amd64
+# aihelper-linux-arm64
+# aihelper-windows-amd64.exe
 ```
 
 #### Create GitHub Release
@@ -186,7 +185,7 @@ Add a "What's New" section:
 ## 🎉 What's New
 
 **v0.2.0** (2024-01-15)
-- Added `ctl worktree merge` command
+- Added `aihelper worktree merge` command
 - Improved error messages
 - [Full changelog](CHANGELOG.md)
 ```
@@ -210,7 +209,7 @@ vim internal/whatever.go
 
 # 3. Test
 make build
-./ctl test-command
+./aihelper test-command
 
 # 4. Commit and merge
 git commit -am "fix: critical bug in worktree creation"
@@ -263,22 +262,22 @@ When you make breaking changes, create a migration guide:
 
 Old:
 ```bash
-ctl create-worktree feature-x
+aihelper create-worktree feature-x
 ```
 
 New:
 ```bash
-ctl worktree create feature-x
+aihelper worktree create feature-x
 ```
 
 **Config location changed:**
 
-Old: `~/.ctl/config.yaml`
+Old: `~/.aihelper/config.yaml`
 New: `~/.config/aihelper/config.yaml`
 
 To migrate:
 ```bash
-mv ~/.ctl/config.yaml ~/.config/aihelper/config.yaml
+mv ~/.aihelper/config.yaml ~/.config/aihelper/config.yaml
 ```
 ```
 
@@ -296,10 +295,10 @@ make clean && make build
 make install-user
 
 # Test commands
-ctl --version
-ctl worktree create test --no-claude
-ctl worktree list
-ctl worktree remove test
+aihelper --version
+aihelper worktree create test --no-claude
+aihelper worktree list
+aihelper worktree remove test
 
 # Test on different platforms (if possible)
 GOOS=linux make build
