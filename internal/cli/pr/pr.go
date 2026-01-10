@@ -147,16 +147,21 @@ Otherwise, it uses the default behavior of 'gh pr create'.`,
 						fmt.Printf("Failed to run gemini: %v\n", err)
 					}
 				} else {
-					if util.GlobalContext.Verbose {
-						fmt.Println("No commits found or failed to get logs.")
-					}
-
+					// Check for dirty state first
 					isDirty, dirtyErr := client.IsDirty()
 					if dirtyErr == nil && isDirty {
-						fmt.Println("\n⚠️  Warning: You have uncommitted changes. Gemini PR generation only works on committed code.")
-						fmt.Println("   Please commit your changes to generate a title and description.\n")
-					} else if err == nil && logs == "" {
-						fmt.Println("\n⚠️  Warning: No new commits found relative to base branch. Skipping generation.\n")
+						return fmt.Errorf("uncommitted changes detected. Please commit your changes to generate a PR description")
+					}
+
+					// Check for empty logs (clean state but no commits)
+					if err == nil && logs == "" {
+						return fmt.Errorf("no new commits found relative to %s. Cannot generate PR description", baseRef)
+					}
+
+					// If git log failed, log it in verbose but allow fallback (or error?)
+					// For now, if we can't get logs, we probably shouldn't guess.
+					if err != nil {
+						return fmt.Errorf("failed to get commit logs: %w", err)
 					}
 				}
 			} else if util.GlobalContext.Verbose {
