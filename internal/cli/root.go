@@ -54,6 +54,7 @@ func init() {
 	rootCmd.AddCommand(worktree.SwitchShortcutCmd)
 	rootCmd.AddCommand(worktree.ListShortcutCmd)
 	rootCmd.AddCommand(worktree.RemoveShortcutCmd)
+	rootCmd.AddCommand(extract.EcCmd)
 }
 
 // initConfig reads in config file and ENV variables if set

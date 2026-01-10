@@ -26,9 +26,20 @@ It checks 'upstream' remote first, then 'origin'.`,
 	RunE: runExtract,
 }
 
+// EcCmd is a shortcut for extract-comments
+var EcCmd = &cobra.Command{
+	Use:   "ec",
+	Short: "Extract CodeRabbit comments (shortcut)",
+	Long:  `Shortcut for extract-comments. See 'aihelper extract-comments --help' for details.`,
+	RunE:  runExtract,
+}
+
 func init() {
 	ExtractCmd.Flags().IntVar(&prNumber, "pr", 0, "Pull Request number (required)")
 	ExtractCmd.MarkFlagRequired("pr")
+
+	EcCmd.Flags().IntVar(&prNumber, "pr", 0, "Pull Request number (required)")
+	EcCmd.MarkFlagRequired("pr")
 }
 
 func runExtract(cmd *cobra.Command, args []string) error {
