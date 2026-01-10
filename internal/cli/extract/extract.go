@@ -17,8 +17,9 @@ var (
 
 // ExtractCmd represents the extract-comments command
 var ExtractCmd = &cobra.Command{
-	Use:   "extract-comments",
-	Short: "Extract CodeRabbit comments and AI prompts from a PR",
+	Use:     "extract-comments",
+	Aliases: []string{"ec"},
+	Short:   "Extract CodeRabbit comments and AI prompts from a PR",
 	Long: `Extracts instructions starting with 'In @' from CodeRabbit comments in a Pull Request.
 It checks 'upstream' remote first, then 'origin'.`,
 	RunE: runExtract,
