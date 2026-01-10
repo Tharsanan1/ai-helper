@@ -204,6 +204,17 @@ func (c *Client) HasUnpushedCommits(branch string) (bool, error) {
 	return count != "0", nil
 }
 
+// IsDirty checks if the working directory has uncommitted changes
+func (c *Client) IsDirty() (bool, error) {
+	cmd := exec.Command("git", "status", "--porcelain")
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		return false, fmt.Errorf("failed to check git status: %w", err)
+	}
+	return strings.TrimSpace(stdout.String()) != "", nil
+}
+
 // Push pushes the specified branch to origin
 func (c *Client) Push(branch string) error {
 	cmd := exec.Command("git", "push", "-u", "origin", branch)

@@ -146,8 +146,18 @@ Otherwise, it uses the default behavior of 'gh pr create'.`,
 					} else if util.GlobalContext.Verbose {
 						fmt.Printf("Failed to run gemini: %v\n", err)
 					}
-				} else if util.GlobalContext.Verbose {
-					fmt.Println("No commits found or failed to get logs. Skipping generation.")
+				} else {
+					if util.GlobalContext.Verbose {
+						fmt.Println("No commits found or failed to get logs.")
+					}
+
+					isDirty, dirtyErr := client.IsDirty()
+					if dirtyErr == nil && isDirty {
+						fmt.Println("\n⚠️  Warning: You have uncommitted changes. Gemini PR generation only works on committed code.")
+						fmt.Println("   Please commit your changes to generate a title and description.\n")
+					} else if err == nil && logs == "" {
+						fmt.Println("\n⚠️  Warning: No new commits found relative to base branch. Skipping generation.\n")
+					}
 				}
 			} else if util.GlobalContext.Verbose {
 				fmt.Println("Gemini CLI not found. Skipping PR content generation.")
