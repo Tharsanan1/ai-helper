@@ -26,7 +26,7 @@ func (g *GeminiLauncher) Name() string {
 }
 
 func (g *GeminiLauncher) IsAvailable() bool {
-	path := g.getCLIPath()
+	path := g.GetCLIPath()
 	if path == "" {
 		return false
 	}
@@ -47,7 +47,7 @@ func (g *GeminiLauncher) Launch(ctx context.Context, opts LaunchOptions) error {
 		return g.launchSandbox(ctx, opts)
 	}
 
-	path := g.getCLIPath()
+	path := g.GetCLIPath()
 
 	args := []string{}
 	args = append(args, opts.Args...)
@@ -110,7 +110,7 @@ func (g *GeminiLauncher) Launch(ctx context.Context, opts LaunchOptions) error {
 	}
 }
 
-func (g *GeminiLauncher) getCLIPath() string {
+func (g *GeminiLauncher) GetCLIPath() string {
 	if g.cliPath != "" {
 		return g.cliPath
 	}

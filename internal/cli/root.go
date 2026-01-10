@@ -2,6 +2,7 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/tharsanan1/ai-helper/internal/cli/audit"
 	cliConfig "github.com/tharsanan1/ai-helper/internal/cli/config"
 	"github.com/tharsanan1/ai-helper/internal/cli/extract"
 	"github.com/tharsanan1/ai-helper/internal/cli/pr"
@@ -45,6 +46,7 @@ func init() {
 
 	// Add command groups
 	rootCmd.AddCommand(worktree.WorktreeCmd)
+	rootCmd.AddCommand(audit.AuditCmd)
 	rootCmd.AddCommand(cliConfig.ConfigCmd)
 	rootCmd.AddCommand(pr.PrCmd)
 	rootCmd.AddCommand(extract.ExtractCmd)

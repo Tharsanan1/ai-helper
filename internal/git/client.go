@@ -268,6 +268,18 @@ func (c *Client) GetCommitLogs(base, head string) (string, error) {
 	return stdout.String(), nil
 }
 
+// GetDiff returns the diff between two references
+func (c *Client) GetDiff(base, head string) (string, error) {
+	// Use ... to show changes that occurred on the branch since it started off from the base
+	cmd := exec.Command("git", "diff", fmt.Sprintf("%s...%s", base, head))
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to get diff: %w", err)
+	}
+	return stdout.String(), nil
+}
+
 // parseWorktreeList parses the porcelain output of git worktree list
 func parseWorktreeList(output string) []WorktreeInfo {
 	var worktrees []WorktreeInfo

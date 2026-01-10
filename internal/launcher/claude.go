@@ -31,7 +31,7 @@ func (c *ClaudeLauncher) Name() string {
 
 // IsAvailable checks if Claude CLI is available
 func (c *ClaudeLauncher) IsAvailable() bool {
-	path := c.getCLIPath()
+	path := c.GetCLIPath()
 	if path == "" {
 		return false
 	}
@@ -54,7 +54,7 @@ func (c *ClaudeLauncher) Launch(ctx context.Context, opts LaunchOptions) error {
 		return c.launchSandbox(ctx, opts)
 	}
 
-	path := c.getCLIPath()
+	path := c.GetCLIPath()
 
 	// Build command arguments
 	args := []string{}
@@ -143,8 +143,8 @@ func (c *ClaudeLauncher) Launch(ctx context.Context, opts LaunchOptions) error {
 	}
 }
 
-// getCLIPath returns the path to Claude CLI
-func (c *ClaudeLauncher) getCLIPath() string {
+// GetCLIPath returns the path to Claude CLI
+func (c *ClaudeLauncher) GetCLIPath() string {
 	if c.cliPath != "" {
 		return c.cliPath
 	}
