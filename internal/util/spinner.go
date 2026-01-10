@@ -25,10 +25,17 @@ func NewSpinner(message string) *Spinner {
 // Start starts the spinner
 func (s *Spinner) Start() {
 	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+	
+	// Print first frame immediately
+	s.mu.Lock()
+	msg := s.message
+	s.mu.Unlock()
+	fmt.Printf("\r\033[36m%s\033[0m %s", frames[0], msg)
+
 	go func() {
 		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
-		i := 0
+		i := 1
 		for {
 			select {
 			case <-s.stop:
