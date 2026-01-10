@@ -38,7 +38,10 @@ Otherwise, it uses the default behavior of 'gh pr create'.`,
 			fmt.Printf("Checking for unpushed commits on branch %s...\n", branch)
 		}
 
+		s := util.NewSpinner("Checking for unpushed commits...")
+		s.Start()
 		hasUnpushed, err := client.HasUnpushedCommits(branch)
+		s.Stop()
 		if err != nil {
 			return fmt.Errorf("failed to check unpushed commits: %w", err)
 		}
@@ -46,7 +49,11 @@ Otherwise, it uses the default behavior of 'gh pr create'.`,
 		if hasUnpushed {
 			fmt.Printf("Pushing branch %s to origin...\n", branch)
 			if !util.GlobalContext.DryRun {
-				if err := client.Push(branch); err != nil {
+				s = util.NewSpinner("Pushing to origin...")
+				s.Start()
+				err := client.Push(branch)
+				s.Stop()
+				if err != nil {
 					return fmt.Errorf("failed to push branch: %w", err)
 				}
 				fmt.Println("Successfully pushed to origin.")
@@ -111,11 +118,16 @@ Otherwise, it uses the default behavior of 'gh pr create'.`,
 						fmt.Printf("Sending prompt to Gemini:\n---\n%s\n---\n", prompt)
 					}
 
+					s = util.NewSpinner("Generating PR content with Gemini...")
+					s.Start()
 					geminiCmd := exec.Command("gemini", prompt)
 					var geminiOut bytes.Buffer
 					geminiCmd.Stdout = &geminiOut
 					
-					if err := geminiCmd.Run(); err == nil {
+					err := geminiCmd.Run()
+					s.Stop()
+
+					if err == nil {
 						output := geminiOut.String()
 						
 						// Parse output

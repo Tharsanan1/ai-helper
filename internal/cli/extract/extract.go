@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tharsanan1/ai-helper/internal/gh"
 	"github.com/tharsanan1/ai-helper/internal/git"
+	"github.com/tharsanan1/ai-helper/internal/util"
 )
 
 var (
@@ -32,13 +33,19 @@ func init() {
 
 func runExtract(cmd *cobra.Command, args []string) error {
 	// 1. Get Git Client
+	s := util.NewSpinner("Initializing git client...")
+	s.Start()
 	gitClient, err := git.NewClient()
+	s.Stop()
 	if err != nil {
 		return fmt.Errorf("failed to initialize git client: %w", err)
 	}
 
 	// 2. Determine Repo
+	s = util.NewSpinner("Determining repository...")
+	s.Start()
 	repo, err := getRepoName(gitClient)
+	s.Stop()
 	if err != nil {
 		return err
 	}
@@ -54,15 +61,21 @@ func runExtract(cmd *cobra.Command, args []string) error {
 	ghClient := gh.NewClient()
 	
 	// Fetch review threads (allows filtering resolved)
+	s = util.NewSpinner(fmt.Sprintf("Fetching review threads for PR %d...", prNumber))
+	s.Start()
 	threads, err := ghClient.GetReviewThreads(owner, repoName, prNumber)
+	s.Stop()
 	if err != nil {
 		fmt.Printf("Warning: failed to fetch review threads: %v\n", err)
 		threads = []gh.ReviewThread{}
 	}
 
 	// Fetch issue comments (general PR comments)
+	s = util.NewSpinner(fmt.Sprintf("Fetching issue comments for PR %d...", prNumber))
+	s.Start()
 	issueEndpoint := fmt.Sprintf("repos/%s/issues/%d/comments", repo, prNumber)
 	issueComments, err := ghClient.GetComments(issueEndpoint)
+	s.Stop()
 	if err != nil {
 		fmt.Printf("Warning: failed to fetch issue comments: %v\n", err)
 		issueComments = []gh.Comment{}
