@@ -25,6 +25,11 @@ type PR struct {
 	Url string `json:"url"`
 }
 
+// Comment represents a GitHub comment (issue or PR review)
+type Comment struct {
+	Body string `json:"body"`
+}
+
 // Client wraps gh CLI operations
 type Client struct{}
 
@@ -83,4 +88,87 @@ func (c *Client) GetPR(repoURL string, prNumber int) (*PR, error) {
 	}
 
 	return &pr, nil
+}
+
+// GetComments fetches comments from a specific GitHub API endpoint
+func (c *Client) GetComments(endpoint string) ([]Comment, error) {
+	if !c.IsAvailable() {
+		return nil, fmt.Errorf("gh cli not found")
+	}
+
+	args := []string{"api", "--paginate", endpoint}
+	cmd := exec.Command("gh", args...)
+	
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch comments: %w", err)
+	}
+
+	var comments []Comment
+	if err := json.Unmarshal(output, &comments); err != nil {
+		return nil, fmt.Errorf("failed to parse comments json: %w", err)
+	}
+
+	return comments, nil
+}
+
+// ReviewThread represents a thread of comments on a PR
+type ReviewThread struct {
+	IsResolved bool `json:"isResolved"`
+	Comments   struct {
+		Nodes []struct {
+			Body string `json:"body"`
+		} `json:"nodes"`
+	} `json:"comments"`
+}
+
+// GetReviewThreads fetches review threads for a PR using GraphQL
+func (c *Client) GetReviewThreads(owner, repo string, prNumber int) ([]ReviewThread, error) {
+	if !c.IsAvailable() {
+		return nil, fmt.Errorf("gh cli not found")
+	}
+
+	query := fmt.Sprintf(`
+query {
+  repository(owner: "%s", name: "%s") {
+    pullRequest(number: %d) {
+      reviewThreads(first: 100) {
+        nodes {
+          isResolved
+          comments(first: 50) {
+            nodes {
+              body
+            }
+          }
+        }
+      }
+    }
+  }
+}`, owner, repo, prNumber)
+
+	args := []string{"api", "graphql", "-f", fmt.Sprintf("query=%s", query)}
+	cmd := exec.Command("gh", args...)
+	
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch review threads: %w", err)
+	}
+
+	var response struct {
+		Data struct {
+			Repository struct {
+				PullRequest struct {
+					ReviewThreads struct {
+						Nodes []ReviewThread `json:"nodes"`
+					} `json:"reviewThreads"`
+				} `json:"pullRequest"`
+			} `json:"repository"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(output, &response); err != nil {
+		return nil, fmt.Errorf("failed to parse graphql response: %w", err)
+	}
+
+	return response.Data.Repository.PullRequest.ReviewThreads.Nodes, nil
 }
