@@ -190,7 +190,8 @@ func updateLocalBranch(localBranch, targetRef string) error {
 	cmd := exec.Command("git", "branch", "-f", localBranch, targetRef)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		// If we're currently on this branch, we need a different approach
-		if strings.Contains(string(output), "cannot force update the current branch") {
+		// Git error: "cannot force update the branch 'X' checked out at..."
+		if strings.Contains(string(output), "cannot force update the branch") {
 			// Switch to detached HEAD, update branch, then we're done
 			// Or use git reset if we're on the branch
 			resetCmd := exec.Command("git", "checkout", localBranch)
