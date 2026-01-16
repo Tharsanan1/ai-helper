@@ -6,6 +6,7 @@ import (
 	"github.com/tharsanan1/ai-helper/internal/cli/extract"
 	"github.com/tharsanan1/ai-helper/internal/cli/pr"
 	"github.com/tharsanan1/ai-helper/internal/cli/setupcopilot"
+	"github.com/tharsanan1/ai-helper/internal/cli/syncmain"
 	"github.com/tharsanan1/ai-helper/internal/cli/worktree"
 
 	"github.com/tharsanan1/ai-helper/internal/util"
@@ -50,6 +51,7 @@ func init() {
 	rootCmd.AddCommand(pr.PrCmd)
 	rootCmd.AddCommand(extract.ExtractCmd)
 	rootCmd.AddCommand(setupcopilot.SetupCopilotCmd)
+	rootCmd.AddCommand(syncmain.SyncMainCmd)
 
 	// Add single-letter shortcuts
 	rootCmd.AddCommand(worktree.CreateShortcutCmd)
