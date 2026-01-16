@@ -2,9 +2,10 @@ package config
 
 // Config represents the complete configuration for ctl
 type Config struct {
-	Worktree WorktreeConfig `mapstructure:"worktree" yaml:"worktree"`
-	Claude   ClaudeConfig   `mapstructure:"claude" yaml:"claude"`
-	Global   GlobalConfig   `mapstructure:"global" yaml:"global"`
+	Worktree     WorktreeConfig     `mapstructure:"worktree" yaml:"worktree"`
+	Claude       ClaudeConfig       `mapstructure:"claude" yaml:"claude"`
+	Global       GlobalConfig       `mapstructure:"global" yaml:"global"`
+	CopilotSetup CopilotSetupConfig `mapstructure:"copilot_setup" yaml:"copilot_setup"`
 }
 
 // WorktreeConfig contains worktree-related configuration
@@ -64,6 +65,15 @@ type GlobalConfig struct {
 	DefaultCLI string `mapstructure:"default_cli" yaml:"default_cli"`
 }
 
+// CopilotSetupConfig contains configuration for the setup-copilot command
+type CopilotSetupConfig struct {
+	// InstructionsMdPath is the source path for copilot-instructions.md
+	InstructionsMdPath string `mapstructure:"instructions_md_path" yaml:"instructions_md_path"`
+
+	// WorkflowYmlPath is the source path for copilot-setup-steps.yml
+	WorkflowYmlPath string `mapstructure:"workflow_yml_path" yaml:"workflow_yml_path"`
+}
+
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
@@ -73,20 +83,24 @@ func DefaultConfig() *Config {
 			DefaultSourceBranch: "", // Empty means use current branch
 		},
 		Claude: ClaudeConfig{
-			DefaultMode:       "agent",
-			AutoLaunch:        true,
-			ExtraArgs:         []string{},
-			CLIPath:           "", // Auto-detect
-			SystemPrompt:      "",
-			SystemPromptMode:  "replace",
-			UseSystemPrompt:   false,
-			MinimaxVerbose:    false,
+			DefaultMode:      "agent",
+			AutoLaunch:       true,
+			ExtraArgs:        []string{},
+			CLIPath:          "", // Auto-detect
+			SystemPrompt:     "",
+			SystemPromptMode: "replace",
+			UseSystemPrompt:  false,
+			MinimaxVerbose:   false,
 		},
 		Global: GlobalConfig{
 			Verbosity:  1,
 			Color:      true,
 			Editor:     "",
 			DefaultCLI: "claude",
+		},
+		CopilotSetup: CopilotSetupConfig{
+			InstructionsMdPath: "",
+			WorkflowYmlPath:    "",
 		},
 	}
 }

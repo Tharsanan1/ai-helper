@@ -47,6 +47,8 @@ func NewManager(repoRoot string) *Manager {
 	v.SetDefault("global.verbosity", defaults.Global.Verbosity)
 	v.SetDefault("global.color", defaults.Global.Color)
 	v.SetDefault("global.editor", defaults.Global.Editor)
+	v.SetDefault("copilot_setup.instructions_md_path", defaults.CopilotSetup.InstructionsMdPath)
+	v.SetDefault("copilot_setup.workflow_yml_path", defaults.CopilotSetup.WorkflowYmlPath)
 
 	return &Manager{
 		viper:    v,

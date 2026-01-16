@@ -5,6 +5,7 @@ import (
 	cliConfig "github.com/tharsanan1/ai-helper/internal/cli/config"
 	"github.com/tharsanan1/ai-helper/internal/cli/extract"
 	"github.com/tharsanan1/ai-helper/internal/cli/pr"
+	"github.com/tharsanan1/ai-helper/internal/cli/setupcopilot"
 	"github.com/tharsanan1/ai-helper/internal/cli/worktree"
 
 	"github.com/tharsanan1/ai-helper/internal/util"
@@ -48,6 +49,7 @@ func init() {
 	rootCmd.AddCommand(cliConfig.ConfigCmd)
 	rootCmd.AddCommand(pr.PrCmd)
 	rootCmd.AddCommand(extract.ExtractCmd)
+	rootCmd.AddCommand(setupcopilot.SetupCopilotCmd)
 
 	// Add single-letter shortcuts
 	rootCmd.AddCommand(worktree.CreateShortcutCmd)

@@ -69,6 +69,8 @@ func getConfigKeys() []string {
 		"global.color",
 		"global.editor",
 		"global.default_cli",
+		"copilot_setup.instructions_md_path",
+		"copilot_setup.workflow_yml_path",
 	}
 }
 
@@ -176,6 +178,12 @@ func setConfigValue(cfg *internalConfig.Config, key, value string) error {
 			return fmt.Errorf("invalid CLI: %s (must be one of: claude, gemini, copilot, droid, opencode)", value)
 		}
 		cfg.Global.DefaultCLI = value
+
+	// Copilot setup config
+	case "copilot_setup.instructions_md_path":
+		cfg.CopilotSetup.InstructionsMdPath = value
+	case "copilot_setup.workflow_yml_path":
+		cfg.CopilotSetup.WorkflowYmlPath = value
 
 	default:
 		return fmt.Errorf("unknown config key: %s", key)
