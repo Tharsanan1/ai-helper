@@ -48,6 +48,12 @@ type ClaudeConfig struct {
 
 	// MinimaxVerbose enables verbose mode when using Minimax APIs
 	MinimaxVerbose bool `mapstructure:"minimax_verbose" yaml:"minimax_verbose"`
+
+	// GLMAPIKey is the API key for using GLM APIs with Claude
+	GLMAPIKey string `mapstructure:"glm_api_key" yaml:"glm_api_key"`
+
+	// GLMModel is the model name to use with GLM APIs
+	GLMModel string `mapstructure:"glm_model" yaml:"glm_model"`
 }
 
 // GlobalConfig contains global settings
@@ -91,6 +97,8 @@ func DefaultConfig() *Config {
 			SystemPromptMode: "replace",
 			UseSystemPrompt:  false,
 			MinimaxVerbose:   false,
+			GLMAPIKey:        "",
+			GLMModel:         "glm-4.7",
 		},
 		Global: GlobalConfig{
 			Verbosity:  1,

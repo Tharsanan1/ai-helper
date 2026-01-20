@@ -65,6 +65,8 @@ func getConfigKeys() []string {
 		"claude.system_prompt_mode",
 		"claude.use_system_prompt",
 		"claude.minimax_verbose",
+		"claude.glm_api_key",
+		"claude.glm_model",
 		"global.verbosity",
 		"global.color",
 		"global.editor",
@@ -156,6 +158,10 @@ func setConfigValue(cfg *internalConfig.Config, key, value string) error {
 			return fmt.Errorf("invalid boolean value for %s: %s", key, value)
 		}
 		cfg.Claude.MinimaxVerbose = val
+	case "claude.glm_api_key":
+		cfg.Claude.GLMAPIKey = value
+	case "claude.glm_model":
+		cfg.Claude.GLMModel = value
 
 	// Global config
 	case "global.verbosity":

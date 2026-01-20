@@ -44,6 +44,8 @@ func NewManager(repoRoot string) *Manager {
 	v.SetDefault("claude.system_prompt_mode", defaults.Claude.SystemPromptMode)
 	v.SetDefault("claude.use_system_prompt", defaults.Claude.UseSystemPrompt)
 	v.SetDefault("claude.minimax_verbose", defaults.Claude.MinimaxVerbose)
+	v.SetDefault("claude.glm_api_key", defaults.Claude.GLMAPIKey)
+	v.SetDefault("claude.glm_model", defaults.Claude.GLMModel)
 	v.SetDefault("global.verbosity", defaults.Global.Verbosity)
 	v.SetDefault("global.color", defaults.Global.Color)
 	v.SetDefault("global.editor", defaults.Global.Editor)

@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"bufio"
+	"syscall"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -37,6 +39,7 @@ var (
 	createCopilot        bool
 	createClaude         bool
 	createMinimax        bool
+	createGLM            bool
 	createSystemPrompt   string
 	createAppendSystemPrompt bool
 	createTerminalName   string
@@ -80,6 +83,7 @@ func RegisterCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&createCopilot, "copilot", false, "Launch Copilot CLI instead of Claude")
 	cmd.Flags().BoolVar(&createClaude, "claude", false, "Launch Claude (explicitly, useful for overriding defaults)")
 	cmd.Flags().BoolVar(&createMinimax, "minimax", false, "Launch Claude with Minimax APIs (requires minimax_api_key in config)")
+	cmd.Flags().BoolVar(&createGLM, "glm", false, "Launch Claude with GLM APIs (requires glm_api_key in config)")
 	cmd.Flags().StringVar(&createSystemPrompt, "system-prompt", "", "System prompt to use when launching Claude (overrides config)")
 	cmd.Flags().BoolVar(&createAppendSystemPrompt, "append-system-prompt", false, "Append system prompt instead of replacing")
 	cmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
@@ -404,26 +408,12 @@ func launchTool(worktreePath string, name string, cfg *config.Config, systemProm
 	launchCopilot := createCopilot
 	launchClaude := createClaude
 	launchMinimax := createMinimax
+	launchGLM := createGLM
 
-	// If no explicit flag is set and not --no-claude, determine based on default CLI
-	if !createNoClaude && !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude && !launchMinimax {
-		defaultCLI := cfg.Global.DefaultCLI
-		if defaultCLI == "" {
-			defaultCLI = "claude"
-		}
-
-		switch defaultCLI {
-		case "gemini":
-			launchGemini = true
-		case "copilot":
-			launchCopilot = true
-		case "droid":
-			launchDroid = true
-		case "opencode":
-			launchOpenCode = true
-		default: // claude
-			launchClaude = cfg.Claude.AutoLaunch
-		}
+	// Only launch if an explicit flag is set (no auto-launch behavior)
+	if !createNoClaude && !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude && !launchMinimax && !launchGLM {
+		// No explicit tool specified - exec into the worktree directory
+		return execShellInDir(worktreePath)
 	}
 
 	if launchOpenCode {
@@ -462,8 +452,8 @@ func launchTool(worktreePath string, name string, cfg *config.Config, systemProm
 			}
 			return nil
 		}
-	} else if launchClaude || launchMinimax {
-		if err := launchClaudeTool(worktreePath, name, cfg, launchMinimax, systemPrompt, appendSystemPrompt); err != nil {
+	} else if launchClaude || launchMinimax || launchGLM {
+		if err := launchClaudeTool(worktreePath, name, cfg, launchMinimax, launchGLM, systemPrompt, appendSystemPrompt); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch Claude: %v\n", err)
 			} else {
@@ -608,7 +598,7 @@ func launchCopilotTool(worktreePath string, terminalName string) error {
 	return nil
 }
 
-func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Config, useMinimax bool, systemPrompt string, appendSystemPrompt bool) error {
+func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Config, useMinimax bool, useGLM bool, systemPrompt string, appendSystemPrompt bool) error {
 	// Create Claude launcher
 	claudeLauncher := launcher.NewClaudeLauncher(cfg.Claude.CLIPath)
 
@@ -634,6 +624,19 @@ func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Conf
 		}
 		env["ANTHROPIC_BASE_URL"] = "https://api.minimax.io/anthropic"
 		env["ANTHROPIC_API_KEY"] = cfg.Claude.MinimaxAPIKey
+	} else if useGLM {
+		// Set GLM environment variables
+		if cfg.Claude.GLMAPIKey == "" {
+			return fmt.Errorf("glm_api_key not set in config. Use 'aihelper config set claude.glm_api_key <your-key>'")
+		}
+		glmModel := cfg.Claude.GLMModel
+		if glmModel == "" {
+			glmModel = "glm-4.7"
+		}
+		env["ANTHROPIC_AUTH_TOKEN"] = cfg.Claude.GLMAPIKey
+		env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmModel
+		env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmModel
+		env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmModel
 	}
 
 	// Handle system prompt
@@ -677,12 +680,16 @@ func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Conf
 	if util.GlobalContext.IsColorEnabled() {
 		if useMinimax {
 			color.Cyan("Launching Claude Code CLI with Minimax APIs...\n")
+		} else if useGLM {
+			color.Cyan("Launching Claude Code CLI with GLM APIs...\n")
 		} else {
 			color.Cyan("Launching Claude Code CLI...\n")
 		}
 	} else {
 		if useMinimax {
 			fmt.Println("Launching Claude Code CLI with Minimax APIs...")
+		} else if useGLM {
+			fmt.Println("Launching Claude Code CLI with GLM APIs...")
 		} else {
 			fmt.Println("Launching Claude Code CLI...")
 		}
@@ -702,6 +709,34 @@ func getTerminalName(name string) string {
 		return createTerminalName
 	}
 	return name
+}
+
+func execShellInDir(dir string) error {
+	// Change to the worktree directory
+	if err := os.Chdir(dir); err != nil {
+		return fmt.Errorf("failed to change directory: %w", err)
+	}
+
+	// Get the user's shell from SHELL environment variable
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		// Fallback to common shells
+		for _, s := range []string{"/bin/zsh", "/bin/bash", "/bin/sh"} {
+			if _, err := os.Stat(s); err == nil {
+				shell = s
+				break
+			}
+		}
+	}
+	if shell == "" {
+		return fmt.Errorf("could not determine shell")
+	}
+
+	// Exec the shell (replaces current process)
+	// argv[0] is typically the shell name, argv[1] starts actual args
+	args := []string{filepath.Base(shell)}
+
+	return syscall.Exec(shell, args, os.Environ())
 }
 
 func RunCreate(cmd *cobra.Command, args []string) error {

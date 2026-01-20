@@ -22,6 +22,7 @@ var (
 	switchCopilot      bool
 	switchClaude       bool
 	switchMinimax      bool
+	switchGLM          bool
 	switchSystemPrompt string
 	switchAppendSystemPrompt bool
 	switchTerminalName string
@@ -91,6 +92,7 @@ func RegisterSwitchFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&switchCopilot, "copilot", false, "Launch Copilot CLI instead of Claude")
 	cmd.Flags().BoolVar(&switchClaude, "claude", false, "Launch Claude (explicitly, useful for overriding defaults)")
 	cmd.Flags().BoolVar(&switchMinimax, "minimax", false, "Launch Claude with Minimax APIs (requires minimax_api_key in config)")
+	cmd.Flags().BoolVar(&switchGLM, "glm", false, "Launch Claude with GLM APIs (requires glm_api_key in config)")
 	cmd.Flags().StringVar(&switchSystemPrompt, "system-prompt", "", "System prompt to use when launching Claude (overrides config)")
 	cmd.Flags().BoolVar(&switchAppendSystemPrompt, "append-system-prompt", false, "Append system prompt instead of replacing")
 	cmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
@@ -152,9 +154,10 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 	launchCopilot := switchCopilot
 	launchClaude := switchClaude
 	launchMinimax := switchMinimax
+	launchGLM := switchGLM
 
 	// If no explicit flag is set, determine based on default CLI
-	if !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude && !launchMinimax {
+	if !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude && !launchMinimax && !launchGLM {
 		defaultCLI := cfg.Global.DefaultCLI
 		if defaultCLI == "" {
 			defaultCLI = "claude"
@@ -210,7 +213,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			}
 			return nil
 		}
-	} else if launchClaude || launchMinimax {
+	} else if launchClaude || launchMinimax || launchGLM {
 		// Launch Claude
 		claudeLauncher := launcher.NewClaudeLauncher(cfg.Claude.CLIPath)
 
@@ -235,6 +238,19 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			}
 			env["ANTHROPIC_BASE_URL"] = "https://api.minimax.io/anthropic"
 			env["ANTHROPIC_API_KEY"] = cfg.Claude.MinimaxAPIKey
+		} else if launchGLM {
+			// Set GLM environment variables
+			if cfg.Claude.GLMAPIKey == "" {
+				return fmt.Errorf("glm_api_key not set in config. Use 'aihelper config set claude.glm_api_key <your-key>'")
+			}
+			glmModel := cfg.Claude.GLMModel
+			if glmModel == "" {
+				glmModel = "glm-4.7"
+			}
+			env["ANTHROPIC_AUTH_TOKEN"] = cfg.Claude.GLMAPIKey
+			env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmModel
+			env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmModel
+			env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmModel
 		}
 
 		// Handle system prompt
@@ -269,12 +285,16 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 		if util.GlobalContext.IsColorEnabled() {
 			if launchMinimax {
 				color.Cyan("Launching Claude Code CLI with Minimax APIs in %s...\n", worktreePath)
+			} else if launchGLM {
+				color.Cyan("Launching Claude Code CLI with GLM APIs in %s...\n", worktreePath)
 			} else {
 				color.Cyan("Launching Claude Code CLI in %s...\n", worktreePath)
 			}
 		} else {
 			if launchMinimax {
 				fmt.Printf("Launching Claude Code CLI with Minimax APIs in %s...\n", worktreePath)
+			} else if launchGLM {
+				fmt.Printf("Launching Claude Code CLI with GLM APIs in %s...\n", worktreePath)
 			} else {
 				fmt.Printf("Launching Claude Code CLI in %s...\n", worktreePath)
 			}
