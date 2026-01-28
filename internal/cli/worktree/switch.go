@@ -23,6 +23,7 @@ var (
 	switchClaude       bool
 	switchMinimax      bool
 	switchGLM          bool
+	switchKimi         bool
 	switchSystemPrompt string
 	switchAppendSystemPrompt bool
 	switchTerminalName string
@@ -93,6 +94,7 @@ func RegisterSwitchFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&switchClaude, "claude", false, "Launch Claude (explicitly, useful for overriding defaults)")
 	cmd.Flags().BoolVar(&switchMinimax, "minimax", false, "Launch Claude with Minimax APIs (requires minimax_api_key in config)")
 	cmd.Flags().BoolVar(&switchGLM, "glm", false, "Launch Claude with GLM APIs (requires glm_api_key in config)")
+	cmd.Flags().BoolVar(&switchKimi, "kimi", false, "Launch Claude with Kimi APIs (requires kimi_api_key in config)")
 	cmd.Flags().StringVar(&switchSystemPrompt, "system-prompt", "", "System prompt to use when launching Claude (overrides config)")
 	cmd.Flags().BoolVar(&switchAppendSystemPrompt, "append-system-prompt", false, "Append system prompt instead of replacing")
 	cmd.Flags().StringVar(&switchTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
@@ -155,9 +157,10 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 	launchClaude := switchClaude
 	launchMinimax := switchMinimax
 	launchGLM := switchGLM
+	launchKimi := switchKimi
 
 	// If no explicit flag is set, determine based on default CLI
-	if !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude && !launchMinimax && !launchGLM {
+	if !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude && !launchMinimax && !launchGLM && !launchKimi {
 		defaultCLI := cfg.Global.DefaultCLI
 		if defaultCLI == "" {
 			defaultCLI = "claude"
@@ -213,7 +216,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			}
 			return nil
 		}
-	} else if launchClaude || launchMinimax || launchGLM {
+	} else if launchClaude || launchMinimax || launchGLM || launchKimi {
 		// Launch Claude
 		claudeLauncher := launcher.NewClaudeLauncher(cfg.Claude.CLIPath)
 
@@ -251,6 +254,17 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmModel
 			env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmModel
 			env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmModel
+		} else if launchKimi {
+			// Set Kimi environment variables
+			if cfg.Claude.KimiAPIKey == "" {
+				return fmt.Errorf("kimi_api_key not set in config. Use 'aihelper config set claude.kimi_api_key <your-key>'")
+			}
+			kimiBaseURL := cfg.Claude.KimiBaseURL
+			if kimiBaseURL == "" {
+				kimiBaseURL = "https://api.kimi.com/coding/"
+			}
+			env["ANTHROPIC_BASE_URL"] = kimiBaseURL
+			env["ANTHROPIC_API_KEY"] = cfg.Claude.KimiAPIKey
 		}
 
 		// Handle system prompt
@@ -259,7 +273,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			effectiveSystemPrompt = cfg.Claude.SystemPrompt
 		}
 
-		if launchMinimax && effectiveSystemPrompt != "" {
+		if (launchMinimax || launchKimi) && effectiveSystemPrompt != "" {
 			if switchAppendSystemPrompt || cfg.Claude.SystemPromptMode == "append" {
 				args = append(args, "--append-system-prompt", effectiveSystemPrompt)
 			} else {
@@ -287,6 +301,8 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 				color.Cyan("Launching Claude Code CLI with Minimax APIs in %s...\n", worktreePath)
 			} else if launchGLM {
 				color.Cyan("Launching Claude Code CLI with GLM APIs in %s...\n", worktreePath)
+			} else if launchKimi {
+				color.Cyan("Launching Claude Code CLI with Kimi APIs in %s...\n", worktreePath)
 			} else {
 				color.Cyan("Launching Claude Code CLI in %s...\n", worktreePath)
 			}
@@ -295,6 +311,8 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 				fmt.Printf("Launching Claude Code CLI with Minimax APIs in %s...\n", worktreePath)
 			} else if launchGLM {
 				fmt.Printf("Launching Claude Code CLI with GLM APIs in %s...\n", worktreePath)
+			} else if launchKimi {
+				fmt.Printf("Launching Claude Code CLI with Kimi APIs in %s...\n", worktreePath)
 			} else {
 				fmt.Printf("Launching Claude Code CLI in %s...\n", worktreePath)
 			}

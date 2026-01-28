@@ -54,6 +54,12 @@ type ClaudeConfig struct {
 
 	// GLMModel is the model name to use with GLM APIs
 	GLMModel string `mapstructure:"glm_model" yaml:"glm_model"`
+
+	// KimiAPIKey is the API key for using Kimi APIs with Claude
+	KimiAPIKey string `mapstructure:"kimi_api_key" yaml:"kimi_api_key"`
+
+	// KimiBaseURL is the base URL for Kimi APIs (default: https://api.kimi.com/coding/)
+	KimiBaseURL string `mapstructure:"kimi_base_url" yaml:"kimi_base_url"`
 }
 
 // GlobalConfig contains global settings
@@ -99,6 +105,8 @@ func DefaultConfig() *Config {
 			MinimaxVerbose:   false,
 			GLMAPIKey:        "",
 			GLMModel:         "glm-4.7",
+			KimiAPIKey:       "",
+			KimiBaseURL:      "https://api.kimi.com/coding/",
 		},
 		Global: GlobalConfig{
 			Verbosity:  1,

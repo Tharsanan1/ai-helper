@@ -67,6 +67,8 @@ func getConfigKeys() []string {
 		"claude.minimax_verbose",
 		"claude.glm_api_key",
 		"claude.glm_model",
+		"claude.kimi_api_key",
+		"claude.kimi_base_url",
 		"global.verbosity",
 		"global.color",
 		"global.editor",
@@ -162,6 +164,10 @@ func setConfigValue(cfg *internalConfig.Config, key, value string) error {
 		cfg.Claude.GLMAPIKey = value
 	case "claude.glm_model":
 		cfg.Claude.GLMModel = value
+	case "claude.kimi_api_key":
+		cfg.Claude.KimiAPIKey = value
+	case "claude.kimi_base_url":
+		cfg.Claude.KimiBaseURL = value
 
 	// Global config
 	case "global.verbosity":

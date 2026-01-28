@@ -40,6 +40,7 @@ var (
 	createClaude         bool
 	createMinimax        bool
 	createGLM            bool
+	createKimi           bool
 	createSystemPrompt   string
 	createAppendSystemPrompt bool
 	createTerminalName   string
@@ -84,6 +85,7 @@ func RegisterCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&createClaude, "claude", false, "Launch Claude (explicitly, useful for overriding defaults)")
 	cmd.Flags().BoolVar(&createMinimax, "minimax", false, "Launch Claude with Minimax APIs (requires minimax_api_key in config)")
 	cmd.Flags().BoolVar(&createGLM, "glm", false, "Launch Claude with GLM APIs (requires glm_api_key in config)")
+	cmd.Flags().BoolVar(&createKimi, "kimi", false, "Launch Claude with Kimi APIs (requires kimi_api_key in config)")
 	cmd.Flags().StringVar(&createSystemPrompt, "system-prompt", "", "System prompt to use when launching Claude (overrides config)")
 	cmd.Flags().BoolVar(&createAppendSystemPrompt, "append-system-prompt", false, "Append system prompt instead of replacing")
 	cmd.Flags().StringVar(&createTerminalName, "terminal-name", "", "Terminal window name (default: worktree name)")
@@ -409,9 +411,10 @@ func launchTool(worktreePath string, name string, cfg *config.Config, systemProm
 	launchClaude := createClaude
 	launchMinimax := createMinimax
 	launchGLM := createGLM
+	launchKimi := createKimi
 
 	// Only launch if an explicit flag is set (no auto-launch behavior)
-	if !createNoClaude && !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude && !launchMinimax && !launchGLM {
+	if !createNoClaude && !launchOpenCode && !launchGemini && !launchDroid && !launchCopilot && !launchClaude && !launchMinimax && !launchGLM && !launchKimi {
 		// No explicit tool specified - exec into the worktree directory
 		return execShellInDir(worktreePath)
 	}
@@ -452,8 +455,8 @@ func launchTool(worktreePath string, name string, cfg *config.Config, systemProm
 			}
 			return nil
 		}
-	} else if launchClaude || launchMinimax || launchGLM {
-		if err := launchClaudeTool(worktreePath, name, cfg, launchMinimax, launchGLM, systemPrompt, appendSystemPrompt); err != nil {
+	} else if launchClaude || launchMinimax || launchGLM || launchKimi {
+		if err := launchClaudeTool(worktreePath, name, cfg, launchMinimax, launchGLM, launchKimi, systemPrompt, appendSystemPrompt); err != nil {
 			if util.GlobalContext.IsColorEnabled() {
 				color.Yellow("Warning: failed to launch Claude: %v\n", err)
 			} else {
@@ -598,7 +601,7 @@ func launchCopilotTool(worktreePath string, terminalName string) error {
 	return nil
 }
 
-func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Config, useMinimax bool, useGLM bool, systemPrompt string, appendSystemPrompt bool) error {
+func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Config, useMinimax bool, useGLM bool, useKimi bool, systemPrompt string, appendSystemPrompt bool) error {
 	// Create Claude launcher
 	claudeLauncher := launcher.NewClaudeLauncher(cfg.Claude.CLIPath)
 
@@ -637,6 +640,17 @@ func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Conf
 		env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmModel
 		env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmModel
 		env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmModel
+	} else if useKimi {
+		// Set Kimi environment variables
+		if cfg.Claude.KimiAPIKey == "" {
+			return fmt.Errorf("kimi_api_key not set in config. Use 'aihelper config set claude.kimi_api_key <your-key>'")
+		}
+		kimiBaseURL := cfg.Claude.KimiBaseURL
+		if kimiBaseURL == "" {
+			kimiBaseURL = "https://api.kimi.com/coding/"
+		}
+		env["ANTHROPIC_BASE_URL"] = kimiBaseURL
+		env["ANTHROPIC_API_KEY"] = cfg.Claude.KimiAPIKey
 	}
 
 	// Handle system prompt
@@ -645,7 +659,7 @@ func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Conf
 		effectiveSystemPrompt = cfg.Claude.SystemPrompt
 	}
 
-	if useMinimax && effectiveSystemPrompt != "" {
+	if (useMinimax || useKimi) && effectiveSystemPrompt != "" {
 		if appendSystemPrompt || cfg.Claude.SystemPromptMode == "append" {
 			args = append(args, "--append-system-prompt", effectiveSystemPrompt)
 		} else {
