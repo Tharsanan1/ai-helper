@@ -14,20 +14,20 @@ import (
 
 var (
 	// Flags for switch command
-	switchClaudeMode   string
-	switchClaudeArgs   []string
-	switchOpenCode     bool
-	switchGemini       bool
-	switchDroid        bool
-	switchCopilot      bool
-	switchClaude       bool
-	switchMinimax      bool
-	switchGLM          bool
-	switchKimi         bool
-	switchSystemPrompt string
+	switchClaudeMode         string
+	switchClaudeArgs         []string
+	switchOpenCode           bool
+	switchGemini             bool
+	switchDroid              bool
+	switchCopilot            bool
+	switchClaude             bool
+	switchMinimax            bool
+	switchGLM                bool
+	switchKimi               bool
+	switchSystemPrompt       string
 	switchAppendSystemPrompt bool
-	switchTerminalName string
-	switchSandbox      bool
+	switchTerminalName       string
+	switchSandbox            bool
 )
 
 // switchCmd represents the switch command
@@ -78,11 +78,11 @@ Examples:
 
   # Switch with custom Claude arguments
   	aihelper worktree switch feature-auth --claude-args "--dangerously-skip-permissions"`,
-  	Args:              cobra.ExactArgs(1),
-  	ValidArgsFunction: getWorktreeNames,
-  	RunE:              runSwitch,
-  }
-  
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: getWorktreeNames,
+	RunE:              runSwitch,
+}
+
 // RegisterSwitchFlags registers flags for the switch command
 func RegisterSwitchFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&switchClaudeMode, "claude-mode", "", "Claude mode: chat, agent (default from config)")
@@ -250,6 +250,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			if glmModel == "" {
 				glmModel = "glm-4.7"
 			}
+			env["ANTHROPIC_BASE_URL"] = cfg.Claude.GetGLMBaseURL()
 			env["ANTHROPIC_AUTH_TOKEN"] = cfg.Claude.GLMAPIKey
 			env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmModel
 			env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmModel

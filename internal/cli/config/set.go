@@ -168,6 +168,8 @@ func setConfigValue(cfg *internalConfig.Config, key, value string) error {
 		cfg.Claude.KimiAPIKey = value
 	case "claude.kimi_base_url":
 		cfg.Claude.KimiBaseURL = value
+	case "claude.glm_base_url":
+		cfg.Claude.GLMBaseURL = value
 
 	// Global config
 	case "global.verbosity":

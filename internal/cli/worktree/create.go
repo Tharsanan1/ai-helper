@@ -1,6 +1,7 @@
 package worktree
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -9,14 +10,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"bufio"
 	"syscall"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/tharsanan1/ai-helper/internal/config"
-	"github.com/tharsanan1/ai-helper/internal/git"
 	"github.com/tharsanan1/ai-helper/internal/gh"
+	"github.com/tharsanan1/ai-helper/internal/git"
 	"github.com/tharsanan1/ai-helper/internal/launcher"
 	"github.com/tharsanan1/ai-helper/internal/util"
 	"github.com/tharsanan1/ai-helper/internal/worktree"
@@ -24,28 +24,28 @@ import (
 
 var (
 	// Flags for create command
-	createBranch         string
-	createLocation       string
-	createFrom           string
-	createIssue          int
-	createPR             int
-	createNoClaude       bool
-	createClaudeMode     string
-	createClaudeArgs     []string
-	createExistingBranch bool
-	createOpenCode       bool
-	createGemini         bool
-	createDroid          bool
-	createCopilot        bool
-	createClaude         bool
-	createMinimax        bool
-	createGLM            bool
-	createKimi           bool
-	createSystemPrompt   string
+	createBranch             string
+	createLocation           string
+	createFrom               string
+	createIssue              int
+	createPR                 int
+	createNoClaude           bool
+	createClaudeMode         string
+	createClaudeArgs         []string
+	createExistingBranch     bool
+	createOpenCode           bool
+	createGemini             bool
+	createDroid              bool
+	createCopilot            bool
+	createClaude             bool
+	createMinimax            bool
+	createGLM                bool
+	createKimi               bool
+	createSystemPrompt       string
 	createAppendSystemPrompt bool
-	createTerminalName   string
-	createNewTerminal    bool
-	createSandbox        bool
+	createTerminalName       string
+	createNewTerminal        bool
+	createSandbox            bool
 )
 
 // createCmd represents the create command
@@ -191,7 +191,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			}
 			createBranch = fmt.Sprintf("pr-%d-%s", pr.Number, cleanTitle)
 		}
-		
+
 		if name == "" {
 			name = createBranch
 		}
@@ -271,7 +271,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 				if util.GlobalContext.IsVerbose() {
 					fmt.Printf("Issue not found in upstream: %v\n", issueErr)
 				}
-				
+
 				// Prompt user to check origin
 				fmt.Printf("Issue #%d not found in upstream. Fetch from origin? [y/N] ", createIssue)
 				reader := bufio.NewReader(os.Stdin)
@@ -636,6 +636,7 @@ func launchClaudeTool(worktreePath string, terminalName string, cfg *config.Conf
 		if glmModel == "" {
 			glmModel = "glm-4.7"
 		}
+		env["ANTHROPIC_BASE_URL"] = cfg.Claude.GetGLMBaseURL()
 		env["ANTHROPIC_AUTH_TOKEN"] = cfg.Claude.GLMAPIKey
 		env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmModel
 		env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmModel

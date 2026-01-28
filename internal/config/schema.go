@@ -55,11 +55,22 @@ type ClaudeConfig struct {
 	// GLMModel is the model name to use with GLM APIs
 	GLMModel string `mapstructure:"glm_model" yaml:"glm_model"`
 
+	// GLMBaseURL is the base URL for GLM APIs
+	GLMBaseURL string `mapstructure:"glm_base_url" yaml:"glm_base_url"`
+
 	// KimiAPIKey is the API key for using Kimi APIs with Claude
 	KimiAPIKey string `mapstructure:"kimi_api_key" yaml:"kimi_api_key"`
 
 	// KimiBaseURL is the base URL for Kimi APIs (default: https://api.kimi.com/coding/)
 	KimiBaseURL string `mapstructure:"kimi_base_url" yaml:"kimi_base_url"`
+}
+
+// GetGLMBaseURL returns the GLM base URL with default fallback
+func (c *ClaudeConfig) GetGLMBaseURL() string {
+	if c.GLMBaseURL != "" {
+		return c.GLMBaseURL
+	}
+	return "https://api.z.ai/api/anthropic"
 }
 
 // GlobalConfig contains global settings
@@ -105,6 +116,7 @@ func DefaultConfig() *Config {
 			MinimaxVerbose:   false,
 			GLMAPIKey:        "",
 			GLMModel:         "glm-4.7",
+			GLMBaseURL:       "https://api.z.ai/api/anthropic",
 			KimiAPIKey:       "",
 			KimiBaseURL:      "https://api.kimi.com/coding/",
 		},
