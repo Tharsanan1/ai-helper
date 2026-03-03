@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	cliConfig "github.com/tharsanan1/ai-helper/internal/cli/config"
 	"github.com/tharsanan1/ai-helper/internal/cli/extract"
+	"github.com/tharsanan1/ai-helper/internal/cli/launch"
 	"github.com/tharsanan1/ai-helper/internal/cli/pr"
 	"github.com/tharsanan1/ai-helper/internal/cli/setupcopilot"
 	"github.com/tharsanan1/ai-helper/internal/cli/syncmain"
@@ -48,6 +49,7 @@ func init() {
 	// Add command groups
 	rootCmd.AddCommand(worktree.WorktreeCmd)
 	rootCmd.AddCommand(cliConfig.ConfigCmd)
+	rootCmd.AddCommand(launch.LaunchCmd)
 	rootCmd.AddCommand(pr.PrCmd)
 	rootCmd.AddCommand(extract.ExtractCmd)
 	rootCmd.AddCommand(setupcopilot.SetupCopilotCmd)

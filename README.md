@@ -138,6 +138,21 @@ Launch Claude in an existing worktree:
 aihelper worktree switch feature-auth
 ```
 
+### Launch in Current Directory
+
+Launch an AI tool in the current directory without creating a worktree:
+
+```bash
+# Launch Claude (default)
+aihelper launch
+
+# Launch with Kimi APIs
+aihelper l --kimi
+
+# Launch Gemini
+aihelper run --gemini
+```
+
 ## Configuration
 
 ### Configuration Files
@@ -253,6 +268,7 @@ alias wc='aihelper c'                     # Create worktree
 alias ws='aihelper sw'                    # Switch worktree
 alias wl='aihelper ls'                    # List worktrees
 alias wr='aihelper r'                     # Remove worktree
+alias wlch='aihelper l'                   # Launch in current dir
 
 # Config shortcuts
 alias cfg='aihelper config'               # Config command
@@ -438,6 +454,26 @@ Switch to an existing worktree and launch Claude (or other AI CLI based on confi
 - `--copilot`: Launch Copilot CLI instead of Claude
 - `--droid`: Launch Droid CLI instead of Claude
 - `--opencode`: Launch OpenCode instead of Claude
+
+#### `aihelper launch [flags]`
+
+Launch an AI tool in the current directory.
+
+**Flags:**
+- `--claude`: Explicitly launch Claude
+- `--claude-mode <mode>`: Claude mode (agent|chat)
+- `--claude-args <args>`: Additional Claude CLI arguments
+- `--minimax`: Launch Claude with Minimax APIs
+- `--glm`: Launch Claude with GLM APIs
+- `--kimi`: Launch Claude with Kimi APIs
+- `--gemini`: Launch Gemini CLI
+- `--copilot`: Launch Copilot CLI
+- `--droid`: Launch Droid CLI
+- `--opencode`: Launch OpenCode
+- `--new-terminal`: Launch in a new terminal window
+- `--sandbox`: Launch in a Docker sandbox
+
+**Aliases:** `l`, `run`
 
 ### Config Commands
 
