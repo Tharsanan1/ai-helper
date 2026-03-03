@@ -75,6 +75,7 @@ func getConfigKeys() []string {
 		"global.default_cli",
 		"copilot_setup.instructions_md_path",
 		"copilot_setup.workflow_yml_path",
+		"wso2-patch.base_location",
 	}
 }
 
@@ -198,6 +199,10 @@ func setConfigValue(cfg *internalConfig.Config, key, value string) error {
 		cfg.CopilotSetup.InstructionsMdPath = value
 	case "copilot_setup.workflow_yml_path":
 		cfg.CopilotSetup.WorkflowYmlPath = value
+
+	// WSO2 patch config
+	case "wso2-patch.base_location":
+		cfg.WSO2Patch.BaseLocation = value
 
 	default:
 		return fmt.Errorf("unknown config key: %s", key)

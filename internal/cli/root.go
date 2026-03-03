@@ -9,6 +9,7 @@ import (
 	"github.com/tharsanan1/ai-helper/internal/cli/setupcopilot"
 	"github.com/tharsanan1/ai-helper/internal/cli/syncmain"
 	"github.com/tharsanan1/ai-helper/internal/cli/worktree"
+	"github.com/tharsanan1/ai-helper/internal/cli/wso2patch"
 
 	"github.com/tharsanan1/ai-helper/internal/util"
 )
@@ -54,6 +55,7 @@ func init() {
 	rootCmd.AddCommand(extract.ExtractCmd)
 	rootCmd.AddCommand(setupcopilot.SetupCopilotCmd)
 	rootCmd.AddCommand(syncmain.SyncMainCmd)
+	rootCmd.AddCommand(wso2patch.WSO2PatchCmd)
 
 	// Add single-letter shortcuts
 	rootCmd.AddCommand(worktree.CreateShortcutCmd)

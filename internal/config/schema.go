@@ -6,6 +6,7 @@ type Config struct {
 	Claude       ClaudeConfig       `mapstructure:"claude" yaml:"claude"`
 	Global       GlobalConfig       `mapstructure:"global" yaml:"global"`
 	CopilotSetup CopilotSetupConfig `mapstructure:"copilot_setup" yaml:"copilot_setup"`
+	WSO2Patch    WSO2PatchConfig    `mapstructure:"wso2-patch" yaml:"wso2-patch"`
 }
 
 // WorktreeConfig contains worktree-related configuration
@@ -97,6 +98,31 @@ type CopilotSetupConfig struct {
 	WorkflowYmlPath string `mapstructure:"workflow_yml_path" yaml:"workflow_yml_path"`
 }
 
+// WSO2PatchConfig contains settings for coordinated WSO2 patch worktree creation
+type WSO2PatchConfig struct {
+	// BaseLocation is where wso2 patch worktrees are created
+	BaseLocation string `mapstructure:"base_location" yaml:"base_location"`
+
+	// Repos contains the repo paths and version-to-branch mapping details
+	Repos []WSO2PatchRepoConfig `mapstructure:"repos" yaml:"repos"`
+}
+
+// WSO2PatchRepoConfig defines branch resolution and source repo details
+type WSO2PatchRepoConfig struct {
+	// Name is the output folder name for the repo worktree (defaults to repo folder name if empty)
+	Name string `mapstructure:"name" yaml:"name"`
+
+	// Path is the local git repository path
+	Path string `mapstructure:"path" yaml:"path"`
+
+	// VersionBranchMap maps product version to upstream branch name
+	VersionBranchMap map[string]string `mapstructure:"version_branch_map" yaml:"version_branch_map"`
+
+	// BranchTemplate resolves branch names for versions not in VersionBranchMap
+	// Use "<version>" placeholder, e.g. "support-<version>.x-full"
+	BranchTemplate string `mapstructure:"branch_template" yaml:"branch_template"`
+}
+
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
@@ -129,6 +155,41 @@ func DefaultConfig() *Config {
 		CopilotSetup: CopilotSetupConfig{
 			InstructionsMdPath: "",
 			WorkflowYmlPath:    "",
+		},
+		WSO2Patch: WSO2PatchConfig{
+			BaseLocation: "~/Documents/worktree/wso2-patch",
+			Repos: []WSO2PatchRepoConfig{
+				{
+					Name: "carbon-apimgt",
+					Path: "/Users/tharsanan/Documents/github/forked/carbon-apimgt",
+					VersionBranchMap: map[string]string{
+						"1.9.0":  "support-1.2.0",
+						"1.9.1":  "support-1.2.5",
+						"1.10.0": "support-5.0.3",
+						"2.0.0":  "support-6.0.4",
+						"2.1.0":  "support-6.1.66",
+						"2.2.0":  "support-6.2.201",
+						"2.5.0":  "support-6.3.95",
+						"2.6.0":  "support-6.4.50.x-full",
+						"3.0.0":  "support-6.5.349.x-full",
+						"3.1.0":  "support-6.6.163.x-full",
+						"3.2.0":  "support-6.7.206.x-full",
+						"3.2.1":  "support-6.7.210.x-full",
+						"4.0.0":  "support-9.0.174.x-full",
+						"4.1.0":  "support-9.20.74.x-full",
+						"4.2.0":  "support-9.28.116.x-full",
+						"4.3.0":  "support-9.29.120.x-full",
+						"4.4.0":  "support-9.30.67.x-full",
+						"4.5.0":  "support-9.31.86.x-full",
+						"4.6.0":  "support-9.32.147.x-full",
+					},
+				},
+				{
+					Name:           "product-apim",
+					Path:           "/Users/tharsanan/Documents/github/forked/product-apim",
+					BranchTemplate: "support-<version>.x-full",
+				},
+			},
 		},
 	}
 }
