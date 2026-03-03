@@ -115,6 +115,57 @@ func TestBuildAnalyzePrompt_AppendsUserPrompt(t *testing.T) {
 	}
 }
 
+func TestApplyRepoFilter_FromPatchRootScope(t *testing.T) {
+	scope := &analyzeScope{
+		patchRoot: "/tmp/patch",
+		runRoot:   "/tmp/patch",
+		repos:     []string{"carbon-apimgt", "product-apim"},
+	}
+
+	filtered, err := applyRepoFilter(scope, "carbon-apimgt")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if filtered.runRoot != "/tmp/patch/carbon-apimgt" {
+		t.Fatalf("unexpected runRoot: %s", filtered.runRoot)
+	}
+	if len(filtered.repos) != 1 || filtered.repos[0] != "carbon-apimgt" {
+		t.Fatalf("unexpected repos: %#v", filtered.repos)
+	}
+}
+
+func TestApplyRepoFilter_FromSubfolderScope(t *testing.T) {
+	scope := &analyzeScope{
+		patchRoot: "/tmp/patch",
+		runRoot:   "/tmp/patch/carbon-apimgt",
+		repos:     []string{"carbon-apimgt"},
+	}
+
+	filtered, err := applyRepoFilter(scope, "carbon-apimgt")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if filtered.runRoot != "/tmp/patch/carbon-apimgt" {
+		t.Fatalf("unexpected runRoot: %s", filtered.runRoot)
+	}
+}
+
+func TestApplyRepoFilter_InvalidRepo(t *testing.T) {
+	scope := &analyzeScope{
+		patchRoot: "/tmp/patch",
+		runRoot:   "/tmp/patch",
+		repos:     []string{"carbon-apimgt", "product-apim"},
+	}
+
+	_, err := applyRepoFilter(scope, "unknown-repo")
+	if err == nil {
+		t.Fatal("expected error for invalid repo filter")
+	}
+	if !strings.Contains(err.Error(), "is not in current analysis scope") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func mustMkdir(t *testing.T, path string) {
 	t.Helper()
 	if err := os.MkdirAll(path, 0755); err != nil {

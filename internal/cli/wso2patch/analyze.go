@@ -23,6 +23,7 @@ var (
 	analyzeGitIssueURL string
 	analyzeFolderPath  string
 	analyzeUserPrompt  string
+	analyzeRepoFilter  string
 )
 
 type githubIssue struct {
@@ -47,7 +48,8 @@ The command invokes codex in read-only mode and writes a timestamped markdown re
 	Example: `  aihelper wso2-patch analyze --git https://github.com/wso2/product-apim/issues/123
   aihelper wso2-patch analyze --folder ./notes
   aihelper wso2-patch analyze --git https://github.com/wso2/product-apim/issues/123 --folder /tmp/fix-notes
-  aihelper wso2-patch analyze --git https://github.com/wso2/product-apim/issues/123 --prompt "Focus on gateway mediation flow"`,
+  aihelper wso2-patch analyze --git https://github.com/wso2/product-apim/issues/123 --prompt "Focus on gateway mediation flow"
+  aihelper wso2-patch analyze --repo carbon-apimgt --git https://github.com/wso2/product-apim/issues/123`,
 	RunE: runAnalyze,
 }
 
@@ -55,12 +57,14 @@ func init() {
 	analyzeCmd.Flags().StringVar(&analyzeGitIssueURL, "git", "", "GitHub issue URL (https://github.com/<owner>/<repo>/issues/<number>)")
 	analyzeCmd.Flags().StringVar(&analyzeFolderPath, "folder", "", "Folder path with patch/fix details")
 	analyzeCmd.Flags().StringVar(&analyzeUserPrompt, "prompt", "", "Additional user prompt appended to Codex analysis instructions")
+	analyzeCmd.Flags().StringVar(&analyzeRepoFilter, "repo", "", "Analyze only a specific repo (e.g., carbon-apimgt)")
 }
 
 func runAnalyze(cmd *cobra.Command, args []string) error {
 	issueURL := strings.TrimSpace(analyzeGitIssueURL)
 	folderInput := strings.TrimSpace(analyzeFolderPath)
 	userPrompt := strings.TrimSpace(analyzeUserPrompt)
+	repoFilter := strings.TrimSpace(analyzeRepoFilter)
 	if issueURL == "" && folderInput == "" {
 		return fmt.Errorf("at least one of --git or --folder is required")
 	}
@@ -94,6 +98,14 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	if repoFilter != "" {
+		scope, err = applyRepoFilter(scope, repoFilter)
+		if err != nil {
+			return err
+		}
+	}
+
 	printDone("Analysis scope: %s", strings.Join(scope.repos, ", "))
 
 	var issue *githubIssue
@@ -142,10 +154,39 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		if userPrompt != "" {
 			fmt.Printf("  User prompt: %s\n", userPrompt)
 		}
+		if repoFilter != "" {
+			fmt.Printf("  Repo filter: %s\n", repoFilter)
+		}
 		fmt.Printf("  Repos: %s\n", strings.Join(scope.repos, ", "))
 		fmt.Printf("  Prompt length: %d chars\n", len(prompt))
 		return nil
 	}
+
+	fmt.Println()
+	if util.GlobalContext.IsColorEnabled() {
+		color.Cyan("============================================================")
+		color.Cyan("CODEX ANALYZE PROMPT (BEGIN)")
+		color.Cyan("============================================================")
+	} else {
+		fmt.Println("============================================================")
+		fmt.Println("CODEX ANALYZE PROMPT (BEGIN)")
+		fmt.Println("============================================================")
+	}
+
+	fmt.Println()
+	fmt.Println(prompt)
+	fmt.Println()
+
+	if util.GlobalContext.IsColorEnabled() {
+		color.Cyan("============================================================")
+		color.Cyan("CODEX ANALYZE PROMPT (END)")
+		color.Cyan("============================================================")
+	} else {
+		fmt.Println("============================================================")
+		fmt.Println("CODEX ANALYZE PROMPT (END)")
+		fmt.Println("============================================================")
+	}
+	fmt.Println()
 
 	printProgress("Running Codex analysis")
 	analysis, err := runCodexAnalyze(scope.runRoot, folderPath, prompt)
@@ -480,4 +521,29 @@ func containsString(items []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func applyRepoFilter(scope *analyzeScope, repoFilter string) (*analyzeScope, error) {
+	if scope == nil {
+		return nil, fmt.Errorf("invalid analyze scope")
+	}
+	repoFilter = strings.TrimSpace(repoFilter)
+	if repoFilter == "" {
+		return scope, nil
+	}
+
+	if !containsString(scope.repos, repoFilter) {
+		return nil, fmt.Errorf("repo %q is not in current analysis scope (%s)", repoFilter, strings.Join(scope.repos, ", "))
+	}
+
+	runRoot := scope.runRoot
+	if filepath.Base(scope.runRoot) != repoFilter {
+		runRoot = filepath.Join(scope.patchRoot, repoFilter)
+	}
+
+	return &analyzeScope{
+		patchRoot: scope.patchRoot,
+		runRoot:   runRoot,
+		repos:     []string{repoFilter},
+	}, nil
 }
