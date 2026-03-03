@@ -14,4 +14,5 @@ worktrees under a shared directory structure.`,
 func init() {
 	WSO2PatchCmd.AddCommand(createCmd)
 	WSO2PatchCmd.AddCommand(deleteCmd)
+	WSO2PatchCmd.AddCommand(analyzeCmd)
 }
