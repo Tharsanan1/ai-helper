@@ -15,4 +15,5 @@ func init() {
 	WSO2PatchCmd.AddCommand(createCmd)
 	WSO2PatchCmd.AddCommand(deleteCmd)
 	WSO2PatchCmd.AddCommand(analyzeCmd)
+	WSO2PatchCmd.AddCommand(patchJarsCmd)
 }
