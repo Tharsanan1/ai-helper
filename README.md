@@ -180,10 +180,13 @@ Run the version-specific browser smoke test:
 aihelper peertest \
   --smoketest \
   --product-version 4.4.0 \
+  --peertest-issue https://github.com/wso2-enterprise/wso2-apim-internal/issues/15426 \
   --headless
 ```
 
-By default, smoke test inputs such as tenant domain, admin credentials, tenant user credentials, and screenshot delay are loaded from `peertest.products."<version>".smoketest` in the config file. Flags override those values when needed.
+By default, smoke test inputs such as tenant domain, admin credentials, tenant user credentials, and screenshot timing are loaded from `peertest.products."<version>".smoketest` in the config file. Flags override those values when needed.
+`--smoketest` uses `--peertest-issue` to locate the actual peer test folder, then stores screenshots and the generated GIF under that issue workspace when `screenshot_dir` is configured as a relative path.
+When `screenshot_dir` is configured, `aihelper peertest --smoketest` also combines the new screenshots from that run into a GIF using `gif_frame_delay_ms`.
 
 The `4.4.0` smoke test currently covers:
 - tenant creation
@@ -274,8 +277,9 @@ peertest:
         api_endpoint: "https://httpbin.org/anything"
         api_name_prefix: "PeerTestAPI"
         api_version: "1.0.0"
-        screenshot_dir: "/Users/tharsanan/Documents/tmp/peertest-smoketest-shots-9"
+        screenshot_dir: "smoketest-artifacts/screenshots"
         screenshot_delay_ms: 1000
+        gif_frame_delay_ms: 1000
         slow_mo: 250
 ```
 

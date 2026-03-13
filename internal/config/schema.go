@@ -173,6 +173,7 @@ type PeerTestSmokeTestConfig struct {
 	APIVersion           string `mapstructure:"api_version" yaml:"api_version"`
 	ScreenshotDir        string `mapstructure:"screenshot_dir" yaml:"screenshot_dir"`
 	ScreenshotDelayMs    int    `mapstructure:"screenshot_delay_ms" yaml:"screenshot_delay_ms"`
+	GIFFrameDelayMs      int    `mapstructure:"gif_frame_delay_ms" yaml:"gif_frame_delay_ms"`
 	SlowMo               int    `mapstructure:"slow_mo" yaml:"slow_mo"`
 }
 
@@ -278,6 +279,7 @@ func DefaultConfig() *Config {
 						APIVersion:           "1.0.0",
 						ScreenshotDir:        "",
 						ScreenshotDelayMs:    1000,
+						GIFFrameDelayMs:      1000,
 						SlowMo:               250,
 					},
 				},

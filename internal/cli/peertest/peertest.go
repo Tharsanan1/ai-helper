@@ -5,6 +5,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"image"
+	imgcolor "image/color"
+	"image/color/palette"
+	"image/draw"
+	"image/gif"
+	"image/png"
 	"io"
 	"net/url"
 	"os"
@@ -50,6 +56,7 @@ var (
 	peerTestSmokeAPIVersion      string
 	peerTestSmokeScreenshotDir   string
 	peerTestSmokeScreenshotDelay int
+	peerTestSmokeGIFFrameDelay   int
 	peerTestSmokeSlowMo          int
 )
 
@@ -83,7 +90,7 @@ or execute the version-specific browser smoke test.`,
 
 func init() {
 	PeerTestCmd.Flags().StringVar(&peerTestProductVersion, "product-version", "", "Product version to prepare or run (required)")
-	PeerTestCmd.Flags().StringVar(&peerTestIssueURL, "peertest-issue", "", "Peer test issue URL used to derive the workspace folder (required for prepare/run)")
+	PeerTestCmd.Flags().StringVar(&peerTestIssueURL, "peertest-issue", "", "Peer test issue URL used to derive the workspace folder (required)")
 	PeerTestCmd.Flags().StringVar(&peerTestUsername, "username", "", "Username/email for the first updater login (required unless --run)")
 	PeerTestCmd.Flags().StringVar(&peerTestPassword, "password", "", "Password for the first updater login (required unless --run)")
 	PeerTestCmd.Flags().BoolVar(&peerTestRunMode, "run", false, "Run an already prepared peer test pack instead of preparing/updating one")
@@ -106,6 +113,7 @@ func init() {
 	PeerTestCmd.Flags().StringVar(&peerTestSmokeAPIVersion, "api-version", "", "API version used by the smoke test (defaults to config)")
 	PeerTestCmd.Flags().StringVar(&peerTestSmokeScreenshotDir, "screenshot-dir", "", "Directory to store smoke test screenshots (defaults to config)")
 	PeerTestCmd.Flags().IntVar(&peerTestSmokeScreenshotDelay, "screenshot-delay-ms", 0, "Delay before each smoke test screenshot in milliseconds (defaults to config)")
+	PeerTestCmd.Flags().IntVar(&peerTestSmokeGIFFrameDelay, "gif-frame-delay-ms", 0, "Delay between GIF frames in milliseconds (defaults to config)")
 	PeerTestCmd.Flags().IntVar(&peerTestSmokeSlowMo, "slow-mo", 0, "Playwright slow motion delay in milliseconds (defaults to config)")
 	_ = PeerTestCmd.MarkFlagRequired("product-version")
 }
@@ -122,8 +130,11 @@ func runPeerTest(cmd *cobra.Command, args []string) error {
 	if peerTestRunMode && peerTestSmokeMode {
 		return fmt.Errorf("--run and --smoketest cannot be used together")
 	}
-	if !peerTestSmokeMode && issueInput == "" {
-		return fmt.Errorf("--peertest-issue is required unless --smoketest is used")
+	if issueInput == "" {
+		if peerTestSmokeMode {
+			return fmt.Errorf("--peertest-issue is required for --smoketest")
+		}
+		return fmt.Errorf("--peertest-issue is required")
 	}
 	if !peerTestRunMode && !peerTestSmokeMode {
 		if username == "" {
@@ -159,7 +170,7 @@ func runPeerTest(cmd *cobra.Command, args []string) error {
 	}
 
 	if peerTestSmokeMode {
-		return runPeerTestSmoke(cmd, productCfg)
+		return runPeerTestSmoke(cmd, productCfg, issueNumber)
 	}
 	if peerTestRunMode {
 		return runPreparedPeerTest(productCfg, issueNumber)
@@ -167,7 +178,7 @@ func runPeerTest(cmd *cobra.Command, args []string) error {
 	return preparePeerTest(productCfg, issueNumber, username, password)
 }
 
-func runPeerTestSmoke(cmd *cobra.Command, productCfg *resolvedProductConfig) error {
+func runPeerTestSmoke(cmd *cobra.Command, productCfg *resolvedProductConfig, issueNumber string) error {
 	toolDir, err := resolveSmokeTestToolDir(productCfg.version)
 	if err != nil {
 		return err
@@ -206,8 +217,12 @@ func runPeerTestSmoke(cmd *cobra.Command, productCfg *resolvedProductConfig) err
 	apiEndpoint := smokeFlagString(cmd, "api-endpoint", peerTestSmokeAPIEndpoint, smokeCfg.APIEndpoint)
 	apiNamePrefix := smokeFlagString(cmd, "api-name-prefix", peerTestSmokeAPIName, smokeCfg.APINamePrefix)
 	apiVersion := smokeFlagString(cmd, "api-version", peerTestSmokeAPIVersion, smokeCfg.APIVersion)
-	screenshotDir := smokeFlagString(cmd, "screenshot-dir", peerTestSmokeScreenshotDir, smokeCfg.ScreenshotDir)
+	screenshotDir, err := resolveSmokeArtifactDir(productCfg, issueNumber, smokeFlagString(cmd, "screenshot-dir", peerTestSmokeScreenshotDir, smokeCfg.ScreenshotDir))
+	if err != nil {
+		return err
+	}
 	screenshotDelay := smokeFlagInt(cmd, "screenshot-delay-ms", peerTestSmokeScreenshotDelay, smokeCfg.ScreenshotDelayMs)
+	gifFrameDelay := smokeFlagInt(cmd, "gif-frame-delay-ms", peerTestSmokeGIFFrameDelay, smokeCfg.GIFFrameDelayMs)
 	slowMo := smokeFlagInt(cmd, "slow-mo", peerTestSmokeSlowMo, smokeCfg.SlowMo)
 
 	if tenantAdminEmail == "" && tenantAdminUser != "" && tenantDomain != "" {
@@ -252,6 +267,7 @@ func runPeerTestSmoke(cmd *cobra.Command, productCfg *resolvedProductConfig) err
 	fmt.Printf("Tenant user: %s\n", tenantUser)
 	fmt.Printf("Headless: %t\n", peerTestSmokeHeadless)
 	fmt.Printf("Screenshot dir: %s\n", strings.TrimSpace(screenshotDir))
+	fmt.Printf("GIF frame delay: %dms\n", gifFrameDelay)
 	printSeparator()
 	fmt.Println()
 
@@ -259,6 +275,9 @@ func runPeerTestSmoke(cmd *cobra.Command, productCfg *resolvedProductConfig) err
 		fmt.Println("Dry run: would execute these commands:")
 		fmt.Printf("  cd %s && npm install\n", toolDir)
 		fmt.Printf("  cd %s && node smoke-test.mjs %s\n", toolDir, strings.Join(maskSensitiveSmokeArgs(smokeArgs), " "))
+		if strings.TrimSpace(screenshotDir) != "" {
+			fmt.Printf("  then create a GIF from new screenshots in %s with %dms frame delay\n", screenshotDir, gifFrameDelay)
+		}
 		return nil
 	}
 
@@ -270,11 +289,28 @@ func runPeerTestSmoke(cmd *cobra.Command, productCfg *resolvedProductConfig) err
 		printDone("Installed smoke test dependencies")
 	}
 
+	existingScreenshots := map[string]struct{}{}
+	if strings.TrimSpace(screenshotDir) != "" {
+		existingScreenshots, err = snapshotPNGSet(screenshotDir)
+		if err != nil {
+			return fmt.Errorf("failed to inspect screenshot directory %s before smoke test: %w", screenshotDir, err)
+		}
+	}
+
 	printProgress("Launching smoke test")
 	if err := runStreamingCommand(toolDir, nil, "node", append([]string{"smoke-test.mjs"}, smokeArgs...)...); err != nil {
 		return fmt.Errorf("smoke test failed: %w", err)
 	}
 	printDone("Smoke test completed")
+	if strings.TrimSpace(screenshotDir) != "" {
+		printProgress("Creating smoke test GIF from screenshots")
+		gifPath, err := createSmokeTestGIF(screenshotDir, existingScreenshots, gifFrameDelay)
+		if err != nil {
+			return fmt.Errorf("failed to create smoke test GIF: %w", err)
+		}
+		printDone("Created smoke test GIF")
+		fmt.Printf("GIF: %s\n", gifPath)
+	}
 	return nil
 }
 
@@ -290,6 +326,170 @@ func smokeFlagInt(cmd *cobra.Command, name string, flagValue, configValue int) i
 		return flagValue
 	}
 	return configValue
+}
+
+func resolveSmokeArtifactDir(productCfg *resolvedProductConfig, issueNumber, configured string) (string, error) {
+	issueDir := resolveIssueDir(productCfg, issueNumber)
+	info, err := os.Stat(issueDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("peer test directory does not exist: %s", issueDir)
+		}
+		return "", fmt.Errorf("failed to inspect peer test directory %s: %w", issueDir, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("peer test directory is not a directory: %s", issueDir)
+	}
+
+	trimmed := strings.TrimSpace(configured)
+	if trimmed == "" {
+		return filepath.Join(issueDir, "smoketest-artifacts", "screenshots"), nil
+	}
+	if filepath.IsAbs(trimmed) {
+		return trimmed, nil
+	}
+	return filepath.Join(issueDir, trimmed), nil
+}
+
+func snapshotPNGSet(dir string) (map[string]struct{}, error) {
+	if strings.TrimSpace(dir) == "" {
+		return map[string]struct{}{}, nil
+	}
+	if info, err := os.Stat(dir); err != nil {
+		if os.IsNotExist(err) {
+			return map[string]struct{}{}, nil
+		}
+		return nil, err
+	} else if !info.IsDir() {
+		return nil, fmt.Errorf("%s is not a directory", dir)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	files := make(map[string]struct{}, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if strings.EqualFold(filepath.Ext(entry.Name()), ".png") {
+			files[filepath.Join(dir, entry.Name())] = struct{}{}
+		}
+	}
+	return files, nil
+}
+
+func createSmokeTestGIF(screenshotDir string, existing map[string]struct{}, frameDelayMs int) (string, error) {
+	files, err := collectNewPNGFiles(screenshotDir, existing)
+	if err != nil {
+		return "", err
+	}
+	if len(files) == 0 {
+		return "", fmt.Errorf("no new PNG screenshots were found in %s", screenshotDir)
+	}
+
+	outputPath := filepath.Join(screenshotDir, "smoketest-"+time.Now().Format("20060102-150405")+".gif")
+	if err := encodeGIF(outputPath, files, frameDelayMs); err != nil {
+		return "", err
+	}
+	return outputPath, nil
+}
+
+func collectNewPNGFiles(dir string, existing map[string]struct{}) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	files := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".png") {
+			continue
+		}
+		fullPath := filepath.Join(dir, entry.Name())
+		if _, found := existing[fullPath]; found {
+			continue
+		}
+		files = append(files, fullPath)
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
+func encodeGIF(outputPath string, imagePaths []string, frameDelayMs int) error {
+	delay := gifDelayUnits(frameDelayMs)
+	maxWidth := 0
+	maxHeight := 0
+	for _, imagePath := range imagePaths {
+		file, err := os.Open(imagePath)
+		if err != nil {
+			return fmt.Errorf("failed to open screenshot %s: %w", imagePath, err)
+		}
+		cfg, err := png.DecodeConfig(file)
+		_ = file.Close()
+		if err != nil {
+			return fmt.Errorf("failed to read screenshot config %s: %w", imagePath, err)
+		}
+		if cfg.Width > maxWidth {
+			maxWidth = cfg.Width
+		}
+		if cfg.Height > maxHeight {
+			maxHeight = cfg.Height
+		}
+	}
+
+	canvasBounds := image.Rect(0, 0, maxWidth, maxHeight)
+	animation := &gif.GIF{
+		Image: make([]*image.Paletted, 0, len(imagePaths)),
+		Delay: make([]int, 0, len(imagePaths)),
+	}
+
+	for _, imagePath := range imagePaths {
+		file, err := os.Open(imagePath)
+		if err != nil {
+			return fmt.Errorf("failed to open screenshot %s: %w", imagePath, err)
+		}
+
+		img, err := png.Decode(file)
+		_ = file.Close()
+		if err != nil {
+			return fmt.Errorf("failed to decode screenshot %s: %w", imagePath, err)
+		}
+
+		srcBounds := img.Bounds()
+		canvas := image.NewRGBA(canvasBounds)
+		draw.Draw(canvas, canvasBounds, &image.Uniform{C: imgcolor.White}, image.Point{}, draw.Src)
+		draw.Draw(canvas, image.Rect(0, 0, srcBounds.Dx(), srcBounds.Dy()), img, srcBounds.Min, draw.Src)
+
+		paletted := image.NewPaletted(canvasBounds, palette.Plan9)
+		draw.FloydSteinberg.Draw(paletted, canvasBounds, canvas, image.Point{})
+		animation.Image = append(animation.Image, paletted)
+		animation.Delay = append(animation.Delay, delay)
+	}
+
+	output, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create GIF %s: %w", outputPath, err)
+	}
+	defer output.Close()
+
+	if err := gif.EncodeAll(output, animation); err != nil {
+		return fmt.Errorf("failed to encode GIF %s: %w", outputPath, err)
+	}
+	return nil
+}
+
+func gifDelayUnits(frameDelayMs int) int {
+	if frameDelayMs <= 0 {
+		frameDelayMs = 1000
+	}
+	delay := (frameDelayMs + 9) / 10
+	if delay < 1 {
+		return 1
+	}
+	return delay
 }
 
 func preparePeerTest(productCfg *resolvedProductConfig, issueNumber, username, password string) error {
@@ -516,6 +716,12 @@ func withDefaultSmokeTestConfig(input config.PeerTestSmokeTestConfig) config.Pee
 	}
 	if input.ScreenshotDelayMs == 0 {
 		input.ScreenshotDelayMs = 1000
+	}
+	if input.GIFFrameDelayMs < 0 {
+		input.GIFFrameDelayMs = 0
+	}
+	if input.GIFFrameDelayMs == 0 {
+		input.GIFFrameDelayMs = 1000
 	}
 	if input.SlowMo < 0 {
 		input.SlowMo = 0

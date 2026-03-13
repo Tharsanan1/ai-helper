@@ -58,7 +58,7 @@ async function captureScreenshot(page, cfg, label) {
   const filename = `${String(cfg.screenshotIndex).padStart(3, '0')}-${slugify(label)}.png`;
   const outputPath = path.join(cfg.screenshotDir, filename);
   cfg.screenshotIndex += 1;
-  await page.screenshot({ path: outputPath, fullPage: true });
+  await page.screenshot({ path: outputPath });
   console.log(`Saved screenshot: ${outputPath}`);
 }
 

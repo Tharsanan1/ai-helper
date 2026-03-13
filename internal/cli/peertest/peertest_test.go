@@ -1,6 +1,10 @@
 package peertest
 
 import (
+	"image"
+	"image/color"
+	"image/gif"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -128,6 +132,9 @@ func TestResolveProductConfig_SmokeDefaultsApplied(t *testing.T) {
 	if resolved.smokeTest.ScreenshotDelayMs != 1000 {
 		t.Fatalf("expected default screenshot delay 1000, got %d", resolved.smokeTest.ScreenshotDelayMs)
 	}
+	if resolved.smokeTest.GIFFrameDelayMs != 1000 {
+		t.Fatalf("expected default GIF frame delay 1000, got %d", resolved.smokeTest.GIFFrameDelayMs)
+	}
 	if resolved.smokeTest.SlowMo != 250 {
 		t.Fatalf("expected default slow mo 250, got %d", resolved.smokeTest.SlowMo)
 	}
@@ -223,12 +230,16 @@ func TestSmokeFlagHelpers(t *testing.T) {
 	cmd := &cobra.Command{Use: "test"}
 	cmd.Flags().String("tenant-domain", "", "")
 	cmd.Flags().Int("slow-mo", 0, "")
+	cmd.Flags().Int("gif-frame-delay-ms", 0, "")
 
 	if got := smokeFlagString(cmd, "tenant-domain", "cli.example.com", "config.example.com"); got != "config.example.com" {
 		t.Fatalf("expected config value when flag not changed, got %s", got)
 	}
 	if got := smokeFlagInt(cmd, "slow-mo", 0, 250); got != 250 {
 		t.Fatalf("expected config int when flag not changed, got %d", got)
+	}
+	if got := smokeFlagInt(cmd, "gif-frame-delay-ms", 0, 1000); got != 1000 {
+		t.Fatalf("expected config gif delay when flag not changed, got %d", got)
 	}
 
 	if err := cmd.Flags().Set("tenant-domain", "cli.example.com"); err != nil {
@@ -237,11 +248,91 @@ func TestSmokeFlagHelpers(t *testing.T) {
 	if err := cmd.Flags().Set("slow-mo", "0"); err != nil {
 		t.Fatalf("failed to set slow-mo: %v", err)
 	}
+	if err := cmd.Flags().Set("gif-frame-delay-ms", "500"); err != nil {
+		t.Fatalf("failed to set gif-frame-delay-ms: %v", err)
+	}
 	if got := smokeFlagString(cmd, "tenant-domain", "cli.example.com", "config.example.com"); got != "cli.example.com" {
 		t.Fatalf("expected cli value when flag changed, got %s", got)
 	}
 	if got := smokeFlagInt(cmd, "slow-mo", 0, 250); got != 0 {
 		t.Fatalf("expected cli int when flag changed, got %d", got)
+	}
+	if got := smokeFlagInt(cmd, "gif-frame-delay-ms", 500, 1000); got != 500 {
+		t.Fatalf("expected cli gif delay when flag changed, got %d", got)
+	}
+}
+
+func TestResolveSmokeArtifactDir(t *testing.T) {
+	productCfg := &resolvedProductConfig{
+		version:       "4.4.0",
+		workspaceRoot: t.TempDir(),
+	}
+	issueDir := filepath.Join(productCfg.workspaceRoot, "15426")
+	if err := os.MkdirAll(issueDir, 0755); err != nil {
+		t.Fatalf("failed to create issue dir: %v", err)
+	}
+
+	gotDefault, err := resolveSmokeArtifactDir(productCfg, "15426", "")
+	if err != nil {
+		t.Fatalf("expected no error for default dir, got %v", err)
+	}
+	wantDefault := filepath.Join(issueDir, "smoketest-artifacts", "screenshots")
+	if gotDefault != wantDefault {
+		t.Fatalf("expected %s, got %s", wantDefault, gotDefault)
+	}
+
+	gotRelative, err := resolveSmokeArtifactDir(productCfg, "15426", "custom/screens")
+	if err != nil {
+		t.Fatalf("expected no error for relative dir, got %v", err)
+	}
+	wantRelative := filepath.Join(issueDir, "custom", "screens")
+	if gotRelative != wantRelative {
+		t.Fatalf("expected %s, got %s", wantRelative, gotRelative)
+	}
+}
+
+func TestCreateSmokeTestGIF(t *testing.T) {
+	dir := t.TempDir()
+	existing := filepath.Join(dir, "000-existing.png")
+	if err := writeTestPNG(existing, color.RGBA{R: 255, A: 255}); err != nil {
+		t.Fatalf("failed to write existing png: %v", err)
+	}
+	baseline, err := snapshotPNGSet(dir)
+	if err != nil {
+		t.Fatalf("failed to snapshot dir: %v", err)
+	}
+	first := filepath.Join(dir, "001-first.png")
+	second := filepath.Join(dir, "002-second.png")
+	if err := writeTestPNG(first, color.RGBA{G: 255, A: 255}); err != nil {
+		t.Fatalf("failed to write first png: %v", err)
+	}
+	if err := writeTestPNG(second, color.RGBA{B: 255, A: 255}); err != nil {
+		t.Fatalf("failed to write second png: %v", err)
+	}
+
+	gifPath, err := createSmokeTestGIF(dir, baseline, 500)
+	if err != nil {
+		t.Fatalf("expected gif creation to succeed, got %v", err)
+	}
+	if filepath.Ext(gifPath) != ".gif" {
+		t.Fatalf("expected gif output, got %s", gifPath)
+	}
+
+	file, err := os.Open(gifPath)
+	if err != nil {
+		t.Fatalf("failed to open gif: %v", err)
+	}
+	defer file.Close()
+
+	decoded, err := gif.DecodeAll(file)
+	if err != nil {
+		t.Fatalf("failed to decode gif: %v", err)
+	}
+	if len(decoded.Image) != 2 {
+		t.Fatalf("expected 2 frames in gif, got %d", len(decoded.Image))
+	}
+	if len(decoded.Delay) != 2 || decoded.Delay[0] != 50 {
+		t.Fatalf("expected gif delay 50, got %v", decoded.Delay)
 	}
 }
 
@@ -267,6 +358,23 @@ func TestResolveSmokeTestToolDir(t *testing.T) {
 	if got != toolDir {
 		t.Fatalf("expected %s, got %s", toolDir, got)
 	}
+}
+
+func writeTestPNG(path string, fill color.Color) error {
+	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	for y := 0; y < 2; y++ {
+		for x := 0; x < 2; x++ {
+			img.Set(x, y, fill)
+		}
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return png.Encode(file, img)
 }
 
 func TestMaskSensitiveSmokeArgs(t *testing.T) {
