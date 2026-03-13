@@ -150,6 +150,30 @@ type PeerTestProductConfig struct {
 
 	// RunSteps is the ordered list of shell commands to start the prepared peer test pack.
 	RunSteps []string `mapstructure:"run_steps" yaml:"run_steps"`
+
+	// SmokeTest contains defaults for the version-specific browser smoke test.
+	SmokeTest PeerTestSmokeTestConfig `mapstructure:"smoketest" yaml:"smoketest"`
+}
+
+// PeerTestSmokeTestConfig defines default smoke test inputs for a product version.
+type PeerTestSmokeTestConfig struct {
+	BaseURL              string `mapstructure:"base_url" yaml:"base_url"`
+	AdminUser            string `mapstructure:"admin_user" yaml:"admin_user"`
+	AdminPassword        string `mapstructure:"admin_password" yaml:"admin_password"`
+	TenantDomain         string `mapstructure:"tenant_domain" yaml:"tenant_domain"`
+	TenantAdminUser      string `mapstructure:"tenant_admin_user" yaml:"tenant_admin_user"`
+	TenantAdminPassword  string `mapstructure:"tenant_admin_password" yaml:"tenant_admin_password"`
+	TenantAdminEmail     string `mapstructure:"tenant_admin_email" yaml:"tenant_admin_email"`
+	TenantAdminFirstName string `mapstructure:"tenant_admin_first_name" yaml:"tenant_admin_first_name"`
+	TenantAdminLastName  string `mapstructure:"tenant_admin_last_name" yaml:"tenant_admin_last_name"`
+	TenantUser           string `mapstructure:"tenant_user" yaml:"tenant_user"`
+	TenantUserPassword   string `mapstructure:"tenant_user_password" yaml:"tenant_user_password"`
+	APIEndpoint          string `mapstructure:"api_endpoint" yaml:"api_endpoint"`
+	APINamePrefix        string `mapstructure:"api_name_prefix" yaml:"api_name_prefix"`
+	APIVersion           string `mapstructure:"api_version" yaml:"api_version"`
+	ScreenshotDir        string `mapstructure:"screenshot_dir" yaml:"screenshot_dir"`
+	ScreenshotDelayMs    int    `mapstructure:"screenshot_delay_ms" yaml:"screenshot_delay_ms"`
+	SlowMo               int    `mapstructure:"slow_mo" yaml:"slow_mo"`
 }
 
 // DefaultConfig returns the default configuration
@@ -236,6 +260,25 @@ func DefaultConfig() *Config {
 					RunWorkingDir: "bin",
 					RunSteps: []string{
 						"sh api-manager.sh",
+					},
+					SmokeTest: PeerTestSmokeTestConfig{
+						BaseURL:              "https://localhost:9443",
+						AdminUser:            "admin",
+						AdminPassword:        "admin",
+						TenantDomain:         "peertest.com",
+						TenantAdminUser:      "peer",
+						TenantAdminPassword:  "peer1",
+						TenantAdminEmail:     "peer@peertest.com",
+						TenantAdminFirstName: "peer",
+						TenantAdminLastName:  "admin",
+						TenantUser:           "peertestuser",
+						TenantUserPassword:   "peer1",
+						APIEndpoint:          "https://httpbin.org/anything",
+						APINamePrefix:        "PeerTestAPI",
+						APIVersion:           "1.0.0",
+						ScreenshotDir:        "",
+						ScreenshotDelayMs:    1000,
+						SlowMo:               250,
 					},
 				},
 			},

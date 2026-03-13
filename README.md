@@ -153,6 +153,46 @@ aihelper l --kimi
 aihelper run --gemini
 ```
 
+### Peer Test Workflows
+
+Prepare a versioned peer test workspace from a configured product pack:
+
+```bash
+aihelper peertest \
+  --product-version 4.4.0 \
+  --peertest-issue https://github.com/wso2-enterprise/wso2-apim-internal/issues/15426 \
+  --username you@example.com \
+  --password '<secret>'
+```
+
+Run an already prepared peer test pack:
+
+```bash
+aihelper peertest \
+  --run \
+  --product-version 4.4.0 \
+  --peertest-issue https://github.com/wso2-enterprise/wso2-apim-internal/issues/15426
+```
+
+Run the version-specific browser smoke test:
+
+```bash
+aihelper peertest \
+  --smoketest \
+  --product-version 4.4.0 \
+  --headless
+```
+
+By default, smoke test inputs such as tenant domain, admin credentials, tenant user credentials, and screenshot delay are loaded from `peertest.products."<version>".smoketest` in the config file. Flags override those values when needed.
+
+The `4.4.0` smoke test currently covers:
+- tenant creation
+- tenant user creation
+- API creation and publish in Publisher
+- Dev Portal subscription
+- production key generation
+- API Console GET execution
+
 ## Configuration
 
 ### Configuration Files
@@ -203,6 +243,40 @@ global:
 
   # Default CLI to launch (claude, gemini, copilot, droid, opencode)
   default_cli: "claude"
+
+peertest:
+  products:
+    "4.4.0":
+      pack_path: "~/Documents/wso2/apim/4.4.0/wso2am-4.4.0.13.zip"
+      workspace_root: "~/Documents/wso2/apim/4.4.0/peertests"
+      working_dir: "bin"
+      steps:
+        - "./wso2update_darwin -u {{username}} -p {{password}}"
+        - "./wso2update_darwin"
+        - "export WSO2_UPDATES_UPDATE_LEVEL_STATE=TESTING"
+        - "./wso2update_darwin"
+        - 'grep "Applied " ../updates/logs/wso2update-{{today}}.log'
+      run_working_dir: "bin"
+      run_steps:
+        - "sh api-manager.sh"
+      smoketest:
+        base_url: "https://localhost:9443"
+        admin_user: "admin"
+        admin_password: "admin"
+        tenant_domain: "peertest9.com"
+        tenant_admin_user: "peer9"
+        tenant_admin_password: "peer1"
+        tenant_admin_email: "peer@peertest9.com"
+        tenant_admin_first_name: "peer"
+        tenant_admin_last_name: "admin"
+        tenant_user: "peertestuser9"
+        tenant_user_password: "peer1"
+        api_endpoint: "https://httpbin.org/anything"
+        api_name_prefix: "PeerTestAPI"
+        api_version: "1.0.0"
+        screenshot_dir: "/Users/tharsanan/Documents/tmp/peertest-smoketest-shots-9"
+        screenshot_delay_ms: 1000
+        slow_mo: 250
 ```
 
 ### Manage Configuration

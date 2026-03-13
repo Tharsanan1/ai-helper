@@ -1,0 +1,12 @@
+{
+  "name": "peertest-smoketest-4.4.0",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "smoketest": "node smoke-test.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.53.0"
+  }
+}

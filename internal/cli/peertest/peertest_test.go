@@ -1,11 +1,13 @@
 package peertest
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/tharsanan1/ai-helper/internal/config"
 )
 
@@ -101,6 +103,36 @@ func TestResolveProductConfig_RunModeCanWorkWithoutPackPathWhenWorkspaceConfigur
 	}
 }
 
+func TestResolveProductConfig_SmokeDefaultsApplied(t *testing.T) {
+	cfg := &config.Config{
+		PeerTest: config.PeerTestConfig{
+			Products: map[string]config.PeerTestProductConfig{
+				"4.4.0": {
+					WorkspaceRoot: "/tmp/peertests",
+					RunSteps:      []string{"sh api-manager.sh"},
+				},
+			},
+		},
+	}
+
+	resolved, err := resolveProductConfig(cfg, "4.4.0")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if resolved.smokeTest.TenantDomain != "peertest.com" {
+		t.Fatalf("expected default tenant domain peertest.com, got %s", resolved.smokeTest.TenantDomain)
+	}
+	if resolved.smokeTest.TenantAdminEmail != "peer@peertest.com" {
+		t.Fatalf("expected derived tenant admin email, got %s", resolved.smokeTest.TenantAdminEmail)
+	}
+	if resolved.smokeTest.ScreenshotDelayMs != 1000 {
+		t.Fatalf("expected default screenshot delay 1000, got %d", resolved.smokeTest.ScreenshotDelayMs)
+	}
+	if resolved.smokeTest.SlowMo != 250 {
+		t.Fatalf("expected default slow mo 250, got %d", resolved.smokeTest.SlowMo)
+	}
+}
+
 func TestRenderSteps_RendersAndMasksSensitiveValues(t *testing.T) {
 	cfg := &resolvedProductConfig{
 		version:       "4.4.0",
@@ -148,5 +180,108 @@ func TestRenderSteps_RunModeLeavesBlankSecretsOutOfDisplay(t *testing.T) {
 	}
 	if rendered.display[0] != "sh api-manager.sh" {
 		t.Fatalf("unexpected display step: %s", rendered.display[0])
+	}
+}
+
+func TestParseExportStep(t *testing.T) {
+	key, value, ok := parseExportStep("export WSO2_UPDATES_UPDATE_LEVEL_STATE=TESTING")
+	if !ok {
+		t.Fatal("expected export step to be parsed")
+	}
+	if key != "WSO2_UPDATES_UPDATE_LEVEL_STATE" {
+		t.Fatalf("unexpected export key: %s", key)
+	}
+	if value != "TESTING" {
+		t.Fatalf("unexpected export value: %s", value)
+	}
+}
+
+func TestParseExportStep_Invalid(t *testing.T) {
+	_, _, ok := parseExportStep("./wso2update_darwin")
+	if ok {
+		t.Fatal("did not expect non-export step to parse as export")
+	}
+}
+
+func TestShouldRerunAfterUpdateToolSelfUpdate(t *testing.T) {
+	output := "Update tool client has been updated. Please re-run the tool with necessary parameters"
+	if !shouldRerunAfterUpdateToolSelfUpdate(output) {
+		t.Fatal("expected self-update output to trigger rerun")
+	}
+}
+
+func TestShouldAllowStepRerun(t *testing.T) {
+	if !shouldAllowStepRerun("./wso2update_darwin") {
+		t.Fatal("expected wso2update step to allow rerun")
+	}
+	if shouldAllowStepRerun("grep \"Applied \" ../updates/logs/wso2update-13-03-2026.log") {
+		t.Fatal("did not expect non-update command to allow rerun")
+	}
+}
+
+func TestSmokeFlagHelpers(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().String("tenant-domain", "", "")
+	cmd.Flags().Int("slow-mo", 0, "")
+
+	if got := smokeFlagString(cmd, "tenant-domain", "cli.example.com", "config.example.com"); got != "config.example.com" {
+		t.Fatalf("expected config value when flag not changed, got %s", got)
+	}
+	if got := smokeFlagInt(cmd, "slow-mo", 0, 250); got != 250 {
+		t.Fatalf("expected config int when flag not changed, got %d", got)
+	}
+
+	if err := cmd.Flags().Set("tenant-domain", "cli.example.com"); err != nil {
+		t.Fatalf("failed to set tenant-domain: %v", err)
+	}
+	if err := cmd.Flags().Set("slow-mo", "0"); err != nil {
+		t.Fatalf("failed to set slow-mo: %v", err)
+	}
+	if got := smokeFlagString(cmd, "tenant-domain", "cli.example.com", "config.example.com"); got != "cli.example.com" {
+		t.Fatalf("expected cli value when flag changed, got %s", got)
+	}
+	if got := smokeFlagInt(cmd, "slow-mo", 0, 250); got != 0 {
+		t.Fatalf("expected cli int when flag changed, got %d", got)
+	}
+}
+
+func TestResolveSmokeTestToolDir(t *testing.T) {
+	tempRoot := t.TempDir()
+	toolDir := filepath.Join(tempRoot, "tools", "peertest-smoketest-4.4.0")
+	if err := os.MkdirAll(toolDir, 0755); err != nil {
+		t.Fatalf("failed to create tool dir: %v", err)
+	}
+
+	original := runtimeCaller
+	runtimeCaller = func(skip int) (uintptr, string, int, bool) {
+		return 0, filepath.Join(tempRoot, "internal", "cli", "peertest", "peertest.go"), 0, true
+	}
+	t.Cleanup(func() {
+		runtimeCaller = original
+	})
+
+	got, err := resolveSmokeTestToolDir("4.4.0")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if got != toolDir {
+		t.Fatalf("expected %s, got %s", toolDir, got)
+	}
+}
+
+func TestMaskSensitiveSmokeArgs(t *testing.T) {
+	args := []string{
+		"--admin-user", "admin",
+		"--admin-password", "admin-secret",
+		"--tenant-admin-password", "tenant-secret",
+		"--tenant-user-password", "user-secret",
+	}
+
+	masked := maskSensitiveSmokeArgs(args)
+	if masked[3] != "<hidden>" || masked[5] != "<hidden>" || masked[7] != "<hidden>" {
+		t.Fatalf("expected passwords to be masked, got %v", masked)
+	}
+	if masked[1] != "admin" {
+		t.Fatalf("expected non-sensitive values to remain unchanged, got %v", masked)
 	}
 }

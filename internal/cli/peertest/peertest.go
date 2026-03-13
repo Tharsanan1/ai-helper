@@ -2,6 +2,7 @@ package peertest
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -11,7 +12,9 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -23,11 +26,31 @@ import (
 )
 
 var (
-	peerTestProductVersion string
-	peerTestIssueURL       string
-	peerTestUsername       string
-	peerTestPassword       string
-	peerTestRunMode        bool
+	peerTestProductVersion       string
+	peerTestIssueURL             string
+	peerTestUsername             string
+	peerTestPassword             string
+	peerTestRunMode              bool
+	peerTestSmokeMode            bool
+	peerTestSmokeHeadless        bool
+	peerTestSmokeKeepOpen        bool
+	peerTestSmokeBaseURL         string
+	peerTestSmokeAdminUser       string
+	peerTestSmokeAdminPass       string
+	peerTestSmokeTenant          string
+	peerTestSmokeTenantAdm       string
+	peerTestSmokeTenantPwd       string
+	peerTestSmokeTenantMail      string
+	peerTestSmokeTenantFirst     string
+	peerTestSmokeTenantLast      string
+	peerTestSmokeTenantUser      string
+	peerTestSmokeUserPwd         string
+	peerTestSmokeAPIEndpoint     string
+	peerTestSmokeAPIName         string
+	peerTestSmokeAPIVersion      string
+	peerTestSmokeScreenshotDir   string
+	peerTestSmokeScreenshotDelay int
+	peerTestSmokeSlowMo          int
 )
 
 type resolvedProductConfig struct {
@@ -38,6 +61,7 @@ type resolvedProductConfig struct {
 	steps         []string
 	runWorkingDir string
 	runSteps      []string
+	smokeTest     config.PeerTestSmokeTestConfig
 }
 
 type renderedStepSet struct {
@@ -49,20 +73,41 @@ var PeerTestCmd = &cobra.Command{
 	Use:   "peertest",
 	Short: "Prepare, update, or run a WSO2 peer test product pack",
 	Long: `Prepare a version-specific peer test workspace from a configured product pack,
-run the configured update workflow, or start an already prepared peer test pack.`,
+run the configured update workflow, start an already prepared peer test pack,
+or execute the version-specific browser smoke test.`,
 	Example: `  aihelper peertest --product-version 4.4.0 --peertest-issue https://git.example.com/issues/15426 --username you@example.com --password '<secret>'
-  aihelper peertest --run --product-version 4.4.0 --peertest-issue https://git.example.com/issues/15426`,
+  aihelper peertest --run --product-version 4.4.0 --peertest-issue https://git.example.com/issues/15426
+  aihelper peertest --smoketest --product-version 4.4.0 --headless --screenshot-dir /tmp/peertest-shots`,
 	RunE: runPeerTest,
 }
 
 func init() {
 	PeerTestCmd.Flags().StringVar(&peerTestProductVersion, "product-version", "", "Product version to prepare or run (required)")
-	PeerTestCmd.Flags().StringVar(&peerTestIssueURL, "peertest-issue", "", "Peer test issue URL used to derive the workspace folder (required)")
+	PeerTestCmd.Flags().StringVar(&peerTestIssueURL, "peertest-issue", "", "Peer test issue URL used to derive the workspace folder (required for prepare/run)")
 	PeerTestCmd.Flags().StringVar(&peerTestUsername, "username", "", "Username/email for the first updater login (required unless --run)")
 	PeerTestCmd.Flags().StringVar(&peerTestPassword, "password", "", "Password for the first updater login (required unless --run)")
 	PeerTestCmd.Flags().BoolVar(&peerTestRunMode, "run", false, "Run an already prepared peer test pack instead of preparing/updating one")
+	PeerTestCmd.Flags().BoolVar(&peerTestSmokeMode, "smoketest", false, "Run the product-version specific Playwright smoke test")
+	PeerTestCmd.Flags().BoolVar(&peerTestSmokeHeadless, "headless", false, "Run the smoke test browser in headless mode")
+	PeerTestCmd.Flags().BoolVar(&peerTestSmokeKeepOpen, "keep-open", false, "Keep the smoke test browser open after completion")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeBaseURL, "base-url", "", "Base URL for the smoke test target product (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeAdminUser, "admin-user", "", "Super tenant admin username for the smoke test (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeAdminPass, "admin-password", "", "Super tenant admin password for the smoke test (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeTenant, "tenant-domain", "", "Tenant domain used during the smoke test (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeTenantAdm, "tenant-admin-user", "", "Tenant admin username used during the smoke test (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeTenantPwd, "tenant-admin-password", "", "Tenant admin password used during the smoke test (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeTenantMail, "tenant-admin-email", "", "Tenant admin email used during the smoke test (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeTenantFirst, "tenant-admin-first-name", "", "Tenant admin first name used during the smoke test (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeTenantLast, "tenant-admin-last-name", "", "Tenant admin last name used during the smoke test (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeTenantUser, "tenant-user", "", "Tenant application user created by the smoke test (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeUserPwd, "tenant-user-password", "", "Tenant application user password used during the smoke test (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeAPIEndpoint, "api-endpoint", "", "Endpoint used when creating the smoke test API (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeAPIName, "api-name-prefix", "", "API name prefix used by the smoke test (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeAPIVersion, "api-version", "", "API version used by the smoke test (defaults to config)")
+	PeerTestCmd.Flags().StringVar(&peerTestSmokeScreenshotDir, "screenshot-dir", "", "Directory to store smoke test screenshots (defaults to config)")
+	PeerTestCmd.Flags().IntVar(&peerTestSmokeScreenshotDelay, "screenshot-delay-ms", 0, "Delay before each smoke test screenshot in milliseconds (defaults to config)")
+	PeerTestCmd.Flags().IntVar(&peerTestSmokeSlowMo, "slow-mo", 0, "Playwright slow motion delay in milliseconds (defaults to config)")
 	_ = PeerTestCmd.MarkFlagRequired("product-version")
-	_ = PeerTestCmd.MarkFlagRequired("peertest-issue")
 }
 
 func runPeerTest(cmd *cobra.Command, args []string) error {
@@ -74,21 +119,28 @@ func runPeerTest(cmd *cobra.Command, args []string) error {
 	if version == "" {
 		return fmt.Errorf("--product-version is required")
 	}
-	if issueInput == "" {
-		return fmt.Errorf("--peertest-issue is required")
+	if peerTestRunMode && peerTestSmokeMode {
+		return fmt.Errorf("--run and --smoketest cannot be used together")
 	}
-	if !peerTestRunMode {
+	if !peerTestSmokeMode && issueInput == "" {
+		return fmt.Errorf("--peertest-issue is required unless --smoketest is used")
+	}
+	if !peerTestRunMode && !peerTestSmokeMode {
 		if username == "" {
 			return fmt.Errorf("--username is required unless --run is used")
 		}
 		if password == "" {
-			return fmt.Errorf("--password is required unless --run is used")
+			return fmt.Errorf("--password is required unless --run or --smoketest is used")
 		}
 	}
 
-	issueNumber, err := parsePeerTestIssueNumber(issueInput)
-	if err != nil {
-		return err
+	issueNumber := ""
+	if issueInput != "" {
+		var err error
+		issueNumber, err = parsePeerTestIssueNumber(issueInput)
+		if err != nil {
+			return err
+		}
 	}
 
 	cfgManager, err := util.GlobalContext.GetConfigManager()
@@ -106,10 +158,138 @@ func runPeerTest(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if peerTestSmokeMode {
+		return runPeerTestSmoke(cmd, productCfg)
+	}
 	if peerTestRunMode {
 		return runPreparedPeerTest(productCfg, issueNumber)
 	}
 	return preparePeerTest(productCfg, issueNumber, username, password)
+}
+
+func runPeerTestSmoke(cmd *cobra.Command, productCfg *resolvedProductConfig) error {
+	toolDir, err := resolveSmokeTestToolDir(productCfg.version)
+	if err != nil {
+		return err
+	}
+
+	packageJSON := filepath.Join(toolDir, "package.json")
+	scriptPath := filepath.Join(toolDir, "smoke-test.mjs")
+	if _, err := os.Stat(packageJSON); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("smoke test tool is missing package.json: %s", packageJSON)
+		}
+		return fmt.Errorf("failed to inspect smoke test package.json %s: %w", packageJSON, err)
+	}
+	if _, err := os.Stat(scriptPath); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("smoke test script is missing: %s", scriptPath)
+		}
+		return fmt.Errorf("failed to inspect smoke test script %s: %w", scriptPath, err)
+	}
+	if _, err := exec.LookPath("npm"); err != nil {
+		return fmt.Errorf("npm is required for --smoketest but was not found in PATH")
+	}
+
+	smokeCfg := productCfg.smokeTest
+	baseURL := smokeFlagString(cmd, "base-url", peerTestSmokeBaseURL, smokeCfg.BaseURL)
+	adminUser := smokeFlagString(cmd, "admin-user", peerTestSmokeAdminUser, smokeCfg.AdminUser)
+	adminPassword := smokeFlagString(cmd, "admin-password", peerTestSmokeAdminPass, smokeCfg.AdminPassword)
+	tenantDomain := smokeFlagString(cmd, "tenant-domain", peerTestSmokeTenant, smokeCfg.TenantDomain)
+	tenantAdminUser := smokeFlagString(cmd, "tenant-admin-user", peerTestSmokeTenantAdm, smokeCfg.TenantAdminUser)
+	tenantAdminPassword := smokeFlagString(cmd, "tenant-admin-password", peerTestSmokeTenantPwd, smokeCfg.TenantAdminPassword)
+	tenantAdminEmail := smokeFlagString(cmd, "tenant-admin-email", peerTestSmokeTenantMail, smokeCfg.TenantAdminEmail)
+	tenantAdminFirstName := smokeFlagString(cmd, "tenant-admin-first-name", peerTestSmokeTenantFirst, smokeCfg.TenantAdminFirstName)
+	tenantAdminLastName := smokeFlagString(cmd, "tenant-admin-last-name", peerTestSmokeTenantLast, smokeCfg.TenantAdminLastName)
+	tenantUser := smokeFlagString(cmd, "tenant-user", peerTestSmokeTenantUser, smokeCfg.TenantUser)
+	tenantUserPassword := smokeFlagString(cmd, "tenant-user-password", peerTestSmokeUserPwd, smokeCfg.TenantUserPassword)
+	apiEndpoint := smokeFlagString(cmd, "api-endpoint", peerTestSmokeAPIEndpoint, smokeCfg.APIEndpoint)
+	apiNamePrefix := smokeFlagString(cmd, "api-name-prefix", peerTestSmokeAPIName, smokeCfg.APINamePrefix)
+	apiVersion := smokeFlagString(cmd, "api-version", peerTestSmokeAPIVersion, smokeCfg.APIVersion)
+	screenshotDir := smokeFlagString(cmd, "screenshot-dir", peerTestSmokeScreenshotDir, smokeCfg.ScreenshotDir)
+	screenshotDelay := smokeFlagInt(cmd, "screenshot-delay-ms", peerTestSmokeScreenshotDelay, smokeCfg.ScreenshotDelayMs)
+	slowMo := smokeFlagInt(cmd, "slow-mo", peerTestSmokeSlowMo, smokeCfg.SlowMo)
+
+	if tenantAdminEmail == "" && tenantAdminUser != "" && tenantDomain != "" {
+		tenantAdminEmail = fmt.Sprintf("%s@%s", tenantAdminUser, tenantDomain)
+	}
+
+	smokeArgs := []string{
+		"--base-url", baseURL,
+		"--admin-user", adminUser,
+		"--admin-password", adminPassword,
+		"--tenant-domain", tenantDomain,
+		"--tenant-admin-user", tenantAdminUser,
+		"--tenant-admin-password", tenantAdminPassword,
+		"--tenant-admin-email", tenantAdminEmail,
+		"--tenant-admin-first-name", tenantAdminFirstName,
+		"--tenant-admin-last-name", tenantAdminLastName,
+		"--tenant-user", tenantUser,
+		"--tenant-user-password", tenantUserPassword,
+		"--api-endpoint", apiEndpoint,
+		"--api-name-prefix", apiNamePrefix,
+		"--api-version", apiVersion,
+		"--screenshot-delay-ms", strconv.Itoa(screenshotDelay),
+		"--slow-mo", strconv.Itoa(slowMo),
+	}
+	if peerTestSmokeHeadless {
+		smokeArgs = append(smokeArgs, "--headless")
+	}
+	if peerTestSmokeKeepOpen {
+		smokeArgs = append(smokeArgs, "--keep-open")
+	}
+	if trimmed := strings.TrimSpace(screenshotDir); trimmed != "" {
+		smokeArgs = append(smokeArgs, "--screenshot-dir", trimmed)
+	}
+
+	printProgress("Running peer test smoke test for product %s", productCfg.version)
+	fmt.Println()
+	printSeparator()
+	fmt.Printf("Smoke test tool: %s\n", toolDir)
+	fmt.Printf("Smoke test script: %s\n", scriptPath)
+	fmt.Printf("Base URL: %s\n", baseURL)
+	fmt.Printf("Tenant domain: %s\n", tenantDomain)
+	fmt.Printf("Tenant user: %s\n", tenantUser)
+	fmt.Printf("Headless: %t\n", peerTestSmokeHeadless)
+	fmt.Printf("Screenshot dir: %s\n", strings.TrimSpace(screenshotDir))
+	printSeparator()
+	fmt.Println()
+
+	if util.GlobalContext.IsDryRun() {
+		fmt.Println("Dry run: would execute these commands:")
+		fmt.Printf("  cd %s && npm install\n", toolDir)
+		fmt.Printf("  cd %s && node smoke-test.mjs %s\n", toolDir, strings.Join(maskSensitiveSmokeArgs(smokeArgs), " "))
+		return nil
+	}
+
+	if _, err := os.Stat(filepath.Join(toolDir, "node_modules")); os.IsNotExist(err) {
+		printProgress("Installing smoke test dependencies in %s", toolDir)
+		if err := runStreamingCommand(toolDir, nil, "npm", "install"); err != nil {
+			return fmt.Errorf("failed to install smoke test dependencies: %w", err)
+		}
+		printDone("Installed smoke test dependencies")
+	}
+
+	printProgress("Launching smoke test")
+	if err := runStreamingCommand(toolDir, nil, "node", append([]string{"smoke-test.mjs"}, smokeArgs...)...); err != nil {
+		return fmt.Errorf("smoke test failed: %w", err)
+	}
+	printDone("Smoke test completed")
+	return nil
+}
+
+func smokeFlagString(cmd *cobra.Command, name, flagValue, configValue string) string {
+	if cmd.Flags().Changed(name) {
+		return strings.TrimSpace(flagValue)
+	}
+	return strings.TrimSpace(configValue)
+}
+
+func smokeFlagInt(cmd *cobra.Command, name string, flagValue, configValue int) int {
+	if cmd.Flags().Changed(name) {
+		return flagValue
+	}
+	return configValue
 }
 
 func preparePeerTest(productCfg *resolvedProductConfig, issueNumber, username, password string) error {
@@ -287,7 +467,66 @@ func resolveProductConfig(cfg *config.Config, version string) (*resolvedProductC
 		steps:         sanitizeSteps(entry.Steps),
 		runWorkingDir: runWorkingDir,
 		runSteps:      sanitizeSteps(entry.RunSteps),
+		smokeTest:     withDefaultSmokeTestConfig(entry.SmokeTest),
 	}, nil
+}
+
+func withDefaultSmokeTestConfig(input config.PeerTestSmokeTestConfig) config.PeerTestSmokeTestConfig {
+	if strings.TrimSpace(input.BaseURL) == "" {
+		input.BaseURL = "https://localhost:9443"
+	}
+	if strings.TrimSpace(input.AdminUser) == "" {
+		input.AdminUser = "admin"
+	}
+	if strings.TrimSpace(input.AdminPassword) == "" {
+		input.AdminPassword = "admin"
+	}
+	if strings.TrimSpace(input.TenantDomain) == "" {
+		input.TenantDomain = "peertest.com"
+	}
+	if strings.TrimSpace(input.TenantAdminUser) == "" {
+		input.TenantAdminUser = "peer"
+	}
+	if strings.TrimSpace(input.TenantAdminPassword) == "" {
+		input.TenantAdminPassword = "peer1"
+	}
+	if strings.TrimSpace(input.TenantAdminFirstName) == "" {
+		input.TenantAdminFirstName = "peer"
+	}
+	if strings.TrimSpace(input.TenantAdminLastName) == "" {
+		input.TenantAdminLastName = "admin"
+	}
+	if strings.TrimSpace(input.TenantUser) == "" {
+		input.TenantUser = "peertestuser"
+	}
+	if strings.TrimSpace(input.TenantUserPassword) == "" {
+		input.TenantUserPassword = "peer1"
+	}
+	if strings.TrimSpace(input.APIEndpoint) == "" {
+		input.APIEndpoint = "https://httpbin.org/anything"
+	}
+	if strings.TrimSpace(input.APINamePrefix) == "" {
+		input.APINamePrefix = "PeerTestAPI"
+	}
+	if strings.TrimSpace(input.APIVersion) == "" {
+		input.APIVersion = "1.0.0"
+	}
+	if input.ScreenshotDelayMs < 0 {
+		input.ScreenshotDelayMs = 0
+	}
+	if input.ScreenshotDelayMs == 0 {
+		input.ScreenshotDelayMs = 1000
+	}
+	if input.SlowMo < 0 {
+		input.SlowMo = 0
+	}
+	if input.SlowMo == 0 {
+		input.SlowMo = 250
+	}
+	if strings.TrimSpace(input.TenantAdminEmail) == "" {
+		input.TenantAdminEmail = fmt.Sprintf("%s@%s", input.TenantAdminUser, input.TenantDomain)
+	}
+	return input
 }
 
 func sanitizeSteps(input []string) []string {
@@ -409,40 +648,142 @@ func printSeparator() {
 	fmt.Println("============================================================")
 }
 
-func runPeerTestScript(workingDir string, execSteps, displaySteps []string) error {
-	shell, shellArgs := shellCommand()
-	var script strings.Builder
-	script.WriteString("set -e\n")
-	for i, step := range execSteps {
-		script.WriteString("printf '%s\\n' ")
-		script.WriteString(shellQuote("============================================================"))
-		script.WriteString("\n")
-		script.WriteString("printf '%s\\n' ")
-		script.WriteString(shellQuote(fmt.Sprintf("Running step %d/%d: %s", i+1, len(execSteps), displaySteps[i])))
-		script.WriteString("\n")
-		script.WriteString("printf '%s\\n' ")
-		script.WriteString(shellQuote("============================================================"))
-		script.WriteString("\n")
-		script.WriteString(step)
-		script.WriteString("\n")
-	}
-
+func runStreamingCommand(workingDir string, envOverrides map[string]string, name string, args ...string) error {
 	ctx, stop := signalContext()
 	defer stop()
 
-	cmd := exec.CommandContext(ctx, shell, append(shellArgs, script.String())...)
+	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = workingDir
+	if envOverrides != nil {
+		cmd.Env = mergedEnv(envOverrides)
+	} else {
+		cmd.Env = os.Environ()
+	}
+	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
 
 	if err := cmd.Run(); err != nil {
 		if ctx.Err() != nil {
-			return fmt.Errorf("peer test command interrupted")
+			return fmt.Errorf("command interrupted")
 		}
-		return fmt.Errorf("peer test commands failed: %w", err)
+		return err
 	}
 	return nil
+}
+
+func runPeerTestScript(workingDir string, execSteps, displaySteps []string) error {
+	ctx, stop := signalContext()
+	defer stop()
+
+	envOverrides := map[string]string{}
+	for i, step := range execSteps {
+		fmt.Println("============================================================")
+		fmt.Printf("Running step %d/%d: %s\n", i+1, len(execSteps), displaySteps[i])
+		fmt.Println("============================================================")
+
+		if key, value, ok := parseExportStep(step); ok {
+			envOverrides[key] = value
+			continue
+		}
+
+		if err := runPeerTestCommand(ctx, workingDir, envOverrides, step, displaySteps[i]); err != nil {
+			if ctx.Err() != nil {
+				return fmt.Errorf("peer test command interrupted")
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func runPeerTestCommand(ctx context.Context, workingDir string, envOverrides map[string]string, execStep, displayStep string) error {
+	shell, shellArgs := shellCommand()
+	attempts := 1
+	if shouldAllowStepRerun(execStep) {
+		attempts = 2
+	}
+
+	for attempt := 1; attempt <= attempts; attempt++ {
+		cmd := exec.CommandContext(ctx, shell, append(shellArgs, execStep)...)
+		cmd.Dir = workingDir
+		cmd.Env = mergedEnv(envOverrides)
+		cmd.Stdin = os.Stdin
+
+		var stdoutBuf bytes.Buffer
+		var stderrBuf bytes.Buffer
+		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
+		cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
+
+		err := cmd.Run()
+		if err == nil {
+			return nil
+		}
+
+		if ctx.Err() != nil {
+			return fmt.Errorf("peer test command interrupted")
+		}
+
+		combinedOutput := stdoutBuf.String() + "\n" + stderrBuf.String()
+		if attempt < attempts && shouldRerunAfterUpdateToolSelfUpdate(combinedOutput) {
+			printProgress("WSO2 update tool self-updated during %q; rerunning step once", displayStep)
+			continue
+		}
+
+		return fmt.Errorf("peer test command failed for %q: %w", displayStep, err)
+	}
+
+	return nil
+}
+
+func shouldAllowStepRerun(step string) bool {
+	return strings.Contains(step, "wso2update_")
+}
+
+func shouldRerunAfterUpdateToolSelfUpdate(output string) bool {
+	return strings.Contains(output, "Update tool client has been updated. Please re-run the tool with necessary parameters")
+}
+
+func parseExportStep(step string) (key, value string, ok bool) {
+	trimmed := strings.TrimSpace(step)
+	if !strings.HasPrefix(trimmed, "export ") {
+		return "", "", false
+	}
+
+	assignment := strings.TrimSpace(strings.TrimPrefix(trimmed, "export "))
+	parts := strings.SplitN(assignment, "=", 2)
+	if len(parts) != 2 {
+		return "", "", false
+	}
+
+	key = strings.TrimSpace(parts[0])
+	value = strings.TrimSpace(parts[1])
+	if key == "" {
+		return "", "", false
+	}
+
+	value = strings.Trim(value, `"'`)
+	return key, value, true
+}
+
+func mergedEnv(overrides map[string]string) []string {
+	envMap := map[string]string{}
+	for _, entry := range os.Environ() {
+		parts := strings.SplitN(entry, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		envMap[parts[0]] = parts[1]
+	}
+	for key, value := range overrides {
+		envMap[key] = value
+	}
+
+	merged := make([]string, 0, len(envMap))
+	for key, value := range envMap {
+		merged = append(merged, key+"="+value)
+	}
+	return merged
 }
 
 func signalContext() (context.Context, context.CancelFunc) {
@@ -451,6 +792,40 @@ func signalContext() (context.Context, context.CancelFunc) {
 
 var signalNotifyContext = func(parent context.Context, signals ...os.Signal) (context.Context, context.CancelFunc) {
 	return signal.NotifyContext(parent, signals...)
+}
+
+var runtimeCaller = runtime.Caller
+
+func resolveSmokeTestToolDir(version string) (string, error) {
+	_, sourceFile, _, ok := runtimeCaller(0)
+	if !ok {
+		return "", fmt.Errorf("failed to resolve peertest smoke test tool directory")
+	}
+
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(sourceFile), "..", "..", ".."))
+	toolDir := filepath.Join(repoRoot, "tools", "peertest-smoketest-"+version)
+	if info, err := os.Stat(toolDir); err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("no smoke test tool is available for product version %s at %s", version, toolDir)
+		}
+		return "", fmt.Errorf("failed to inspect smoke test tool directory %s: %w", toolDir, err)
+	} else if !info.IsDir() {
+		return "", fmt.Errorf("smoke test tool path is not a directory: %s", toolDir)
+	}
+
+	return toolDir, nil
+}
+
+func maskSensitiveSmokeArgs(args []string) []string {
+	masked := make([]string, len(args))
+	copy(masked, args)
+	for i := 0; i < len(masked)-1; i++ {
+		switch masked[i] {
+		case "--admin-password", "--tenant-admin-password", "--tenant-user-password":
+			masked[i+1] = "<hidden>"
+		}
+	}
+	return masked
 }
 
 func shellCommand() (string, []string) {
