@@ -7,6 +7,7 @@ type Config struct {
 	Global       GlobalConfig       `mapstructure:"global" yaml:"global"`
 	CopilotSetup CopilotSetupConfig `mapstructure:"copilot_setup" yaml:"copilot_setup"`
 	WSO2Patch    WSO2PatchConfig    `mapstructure:"wso2-patch" yaml:"wso2-patch"`
+	PeerTest     PeerTestConfig     `mapstructure:"peertest" yaml:"peertest"`
 }
 
 // WorktreeConfig contains worktree-related configuration
@@ -123,6 +124,34 @@ type WSO2PatchRepoConfig struct {
 	BranchTemplate string `mapstructure:"branch_template" yaml:"branch_template"`
 }
 
+// PeerTestConfig contains versioned product pack and workflow settings.
+type PeerTestConfig struct {
+	Products map[string]PeerTestProductConfig `mapstructure:"products" yaml:"products"`
+}
+
+// PeerTestProductConfig defines how to create and update a peertest workspace.
+type PeerTestProductConfig struct {
+	// PackPath is the zip file for the product pack.
+	PackPath string `mapstructure:"pack_path" yaml:"pack_path"`
+
+	// WorkspaceRoot is where peertest folders are created.
+	WorkspaceRoot string `mapstructure:"workspace_root" yaml:"workspace_root"`
+
+	// WorkingDir is the directory inside the extracted product where steps run.
+	// If empty, "bin" is used.
+	WorkingDir string `mapstructure:"working_dir" yaml:"working_dir"`
+
+	// Steps is the ordered list of shell commands to run inside WorkingDir.
+	Steps []string `mapstructure:"steps" yaml:"steps"`
+
+	// RunWorkingDir is the directory inside the extracted product where run steps execute.
+	// If empty, "bin" is used.
+	RunWorkingDir string `mapstructure:"run_working_dir" yaml:"run_working_dir"`
+
+	// RunSteps is the ordered list of shell commands to start the prepared peer test pack.
+	RunSteps []string `mapstructure:"run_steps" yaml:"run_steps"`
+}
+
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
@@ -188,6 +217,26 @@ func DefaultConfig() *Config {
 					Name:           "product-apim",
 					Path:           "/Users/tharsanan/Documents/github/forked/product-apim",
 					BranchTemplate: "support-<version>.x-full",
+				},
+			},
+		},
+		PeerTest: PeerTestConfig{
+			Products: map[string]PeerTestProductConfig{
+				"4.4.0": {
+					PackPath:      "~/Documents/wso2/apim/4.4.0/wso2am-4.4.0.13.zip",
+					WorkspaceRoot: "~/Documents/wso2/apim/4.4.0/peertests",
+					WorkingDir:    "bin",
+					Steps: []string{
+						"./wso2update_darwin -u {{username}} -p {{password}}",
+						"./wso2update_darwin",
+						"export WSO2_UPDATES_UPDATE_LEVEL_STATE=TESTING",
+						"./wso2update_darwin",
+						`grep "Applied " ../updates/logs/wso2update-{{today}}.log`,
+					},
+					RunWorkingDir: "bin",
+					RunSteps: []string{
+						"sh api-manager.sh",
+					},
 				},
 			},
 		},

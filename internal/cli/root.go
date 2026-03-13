@@ -5,6 +5,7 @@ import (
 	cliConfig "github.com/tharsanan1/ai-helper/internal/cli/config"
 	"github.com/tharsanan1/ai-helper/internal/cli/extract"
 	"github.com/tharsanan1/ai-helper/internal/cli/launch"
+	"github.com/tharsanan1/ai-helper/internal/cli/peertest"
 	"github.com/tharsanan1/ai-helper/internal/cli/pr"
 	"github.com/tharsanan1/ai-helper/internal/cli/setupcopilot"
 	"github.com/tharsanan1/ai-helper/internal/cli/syncmain"
@@ -52,6 +53,7 @@ func init() {
 	rootCmd.AddCommand(cliConfig.ConfigCmd)
 	rootCmd.AddCommand(launch.LaunchCmd)
 	rootCmd.AddCommand(pr.PrCmd)
+	rootCmd.AddCommand(peertest.PeerTestCmd)
 	rootCmd.AddCommand(extract.ExtractCmd)
 	rootCmd.AddCommand(setupcopilot.SetupCopilotCmd)
 	rootCmd.AddCommand(syncmain.SyncMainCmd)

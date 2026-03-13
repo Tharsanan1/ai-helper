@@ -54,6 +54,7 @@ func NewManager(repoRoot string) *Manager {
 	v.SetDefault("copilot_setup.workflow_yml_path", defaults.CopilotSetup.WorkflowYmlPath)
 	v.SetDefault("wso2-patch.base_location", defaults.WSO2Patch.BaseLocation)
 	v.SetDefault("wso2-patch.repos", defaults.WSO2Patch.Repos)
+	v.SetDefault("peertest.products", defaults.PeerTest.Products)
 
 	return &Manager{
 		viper:    v,
