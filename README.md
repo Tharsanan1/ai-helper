@@ -165,6 +165,8 @@ aihelper peertest \
   --password '<secret>'
 ```
 
+During prepare mode, `aihelper` creates a local git snapshot commit named `updated live` in the extracted product right after the second live update step completes and before the testing-level update begins.
+
 Run an already prepared peer test pack:
 
 ```bash
@@ -187,6 +189,17 @@ aihelper peertest \
 By default, smoke test inputs such as tenant domain, admin credentials, tenant user credentials, and screenshot timing are loaded from `peertest.products."<version>".smoketest` in the config file. Flags override those values when needed.
 `--smoketest` uses `--peertest-issue` to locate the actual peer test folder, then stores screenshots and the generated GIF under that issue workspace when `screenshot_dir` is configured as a relative path.
 When `screenshot_dir` is configured, `aihelper peertest --smoketest` also combines the new screenshots from that run into a GIF using `gif_frame_delay_ms`.
+
+Verify deliverables listed in the peer test issue against the prepared product:
+
+```bash
+aihelper peertest \
+  --verify-updates \
+  --product-version 4.4.0 \
+  --peertest-issue https://github.com/wso2-enterprise/wso2-apim-internal/issues/15738
+```
+
+`--verify-updates` fetches the GitHub issue with `gh`, reads the `peer_test_updates` YAML block, checks that listed deliverables exist in the prepared product, reports duplicate exact paths across updates, and detects versioned jar conflicts so the latest mentioned jar version can be validated.
 
 The `4.4.0` smoke test currently covers:
 - tenant creation
@@ -281,6 +294,21 @@ peertest:
         screenshot_delay_ms: 1000
         gif_frame_delay_ms: 1000
         slow_mo: 250
+```
+
+Peer test issues intended for automation should contain a fenced YAML block like:
+
+```yaml
+peer_test_updates:
+  product_version: "4.4.0"
+  updates:
+    - update_id: "17125"
+      type: "U2"
+      deliverables:
+        - path: "repository/components/plugins/org.wso2.carbon.apimgt.gateway_9.30.67.160.jar"
+          action: "modified"
+        - path: "repository/components/plugins/axiom_1.2.11.wso2v25_8.jar"
+          action: "modified"
 ```
 
 ### Manage Configuration

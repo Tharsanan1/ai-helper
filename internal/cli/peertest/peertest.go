@@ -37,6 +37,7 @@ var (
 	peerTestUsername             string
 	peerTestPassword             string
 	peerTestRunMode              bool
+	peerTestVerifyUpdatesMode    bool
 	peerTestSmokeMode            bool
 	peerTestSmokeHeadless        bool
 	peerTestSmokeKeepOpen        bool
@@ -76,14 +77,17 @@ type renderedStepSet struct {
 	display []string
 }
 
+type peerTestStepHook func(stepIndex int, updateStepCount int, execStep, displayStep string) error
+
 var PeerTestCmd = &cobra.Command{
 	Use:   "peertest",
 	Short: "Prepare, update, or run a WSO2 peer test product pack",
 	Long: `Prepare a version-specific peer test workspace from a configured product pack,
 run the configured update workflow, start an already prepared peer test pack,
-or execute the version-specific browser smoke test.`,
+verify deliverables listed in the peer test issue, or execute the version-specific browser smoke test.`,
 	Example: `  aihelper peertest --product-version 4.4.0 --peertest-issue https://git.example.com/issues/15426 --username you@example.com --password '<secret>'
   aihelper peertest --run --product-version 4.4.0 --peertest-issue https://git.example.com/issues/15426
+  aihelper peertest --verify-updates --product-version 4.4.0 --peertest-issue https://git.example.com/issues/15426
   aihelper peertest --smoketest --product-version 4.4.0 --headless --screenshot-dir /tmp/peertest-shots`,
 	RunE: runPeerTest,
 }
@@ -94,6 +98,7 @@ func init() {
 	PeerTestCmd.Flags().StringVar(&peerTestUsername, "username", "", "Username/email for the first updater login (required unless --run)")
 	PeerTestCmd.Flags().StringVar(&peerTestPassword, "password", "", "Password for the first updater login (required unless --run)")
 	PeerTestCmd.Flags().BoolVar(&peerTestRunMode, "run", false, "Run an already prepared peer test pack instead of preparing/updating one")
+	PeerTestCmd.Flags().BoolVar(&peerTestVerifyUpdatesMode, "verify-updates", false, "Verify deliverables from the peer test issue against the prepared product")
 	PeerTestCmd.Flags().BoolVar(&peerTestSmokeMode, "smoketest", false, "Run the product-version specific Playwright smoke test")
 	PeerTestCmd.Flags().BoolVar(&peerTestSmokeHeadless, "headless", false, "Run the smoke test browser in headless mode")
 	PeerTestCmd.Flags().BoolVar(&peerTestSmokeKeepOpen, "keep-open", false, "Keep the smoke test browser open after completion")
@@ -127,8 +132,14 @@ func runPeerTest(cmd *cobra.Command, args []string) error {
 	if version == "" {
 		return fmt.Errorf("--product-version is required")
 	}
-	if peerTestRunMode && peerTestSmokeMode {
-		return fmt.Errorf("--run and --smoketest cannot be used together")
+	activeModes := 0
+	for _, enabled := range []bool{peerTestRunMode, peerTestVerifyUpdatesMode, peerTestSmokeMode} {
+		if enabled {
+			activeModes++
+		}
+	}
+	if activeModes > 1 {
+		return fmt.Errorf("--run, --verify-updates, and --smoketest are mutually exclusive")
 	}
 	if issueInput == "" {
 		if peerTestSmokeMode {
@@ -136,7 +147,7 @@ func runPeerTest(cmd *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("--peertest-issue is required")
 	}
-	if !peerTestRunMode && !peerTestSmokeMode {
+	if !peerTestRunMode && !peerTestSmokeMode && !peerTestVerifyUpdatesMode {
 		if username == "" {
 			return fmt.Errorf("--username is required unless --run is used")
 		}
@@ -171,6 +182,9 @@ func runPeerTest(cmd *cobra.Command, args []string) error {
 
 	if peerTestSmokeMode {
 		return runPeerTestSmoke(cmd, productCfg, issueNumber)
+	}
+	if peerTestVerifyUpdatesMode {
+		return runPeerTestVerifyUpdates(productCfg, issueInput, issueNumber)
 	}
 	if peerTestRunMode {
 		return runPreparedPeerTest(productCfg, issueNumber)
@@ -565,7 +579,7 @@ func preparePeerTest(productCfg *resolvedProductConfig, issueNumber, username, p
 	printPeerTestPlan(issueDir, productRoot, workingDir, renderedSteps.display)
 
 	printProgress("Running configured peer test steps")
-	if err := runPeerTestScript(workingDir, renderedSteps.exec, renderedSteps.display); err != nil {
+	if err := runPeerTestScript(workingDir, renderedSteps.exec, renderedSteps.display, snapshotLiveUpdatedProductHook(productRoot)); err != nil {
 		return err
 	}
 	printDone("Peer test steps completed")
@@ -618,7 +632,7 @@ func runPreparedPeerTest(productCfg *resolvedProductConfig, issueNumber string) 
 
 	printPeerTestPlan(issueDir, productRoot, workingDir, renderedSteps.display)
 	printProgress("Starting configured peer test run steps")
-	if err := runPeerTestScript(workingDir, renderedSteps.exec, renderedSteps.display); err != nil {
+	if err := runPeerTestScript(workingDir, renderedSteps.exec, renderedSteps.display, nil); err != nil {
 		return err
 	}
 	printDone("Peer test run steps completed")
@@ -878,11 +892,12 @@ func runStreamingCommand(workingDir string, envOverrides map[string]string, name
 	return nil
 }
 
-func runPeerTestScript(workingDir string, execSteps, displaySteps []string) error {
+func runPeerTestScript(workingDir string, execSteps, displaySteps []string, hook peerTestStepHook) error {
 	ctx, stop := signalContext()
 	defer stop()
 
 	envOverrides := map[string]string{}
+	completedUpdateSteps := 0
 	for i, step := range execSteps {
 		fmt.Println("============================================================")
 		fmt.Printf("Running step %d/%d: %s\n", i+1, len(execSteps), displaySteps[i])
@@ -899,8 +914,92 @@ func runPeerTestScript(workingDir string, execSteps, displaySteps []string) erro
 			}
 			return err
 		}
+
+		if shouldAllowStepRerun(step) {
+			completedUpdateSteps++
+		}
+		if hook != nil {
+			if err := hook(i, completedUpdateSteps, step, displaySteps[i]); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
+}
+
+func snapshotLiveUpdatedProductHook(productRoot string) peerTestStepHook {
+	snapshotTaken := false
+	return func(stepIndex int, updateStepCount int, execStep, displayStep string) error {
+		if snapshotTaken {
+			return nil
+		}
+		if !shouldAllowStepRerun(execStep) || updateStepCount != 2 {
+			return nil
+		}
+
+		printProgress("Creating git snapshot after live update in %s", productRoot)
+		if err := createGitSnapshot(productRoot, "updated live"); err != nil {
+			return err
+		}
+		printDone("Created git snapshot: updated live")
+		snapshotTaken = true
+		_ = stepIndex
+		_ = displayStep
+		return nil
+	}
+}
+
+func createGitSnapshot(repoPath, message string) error {
+	if _, err := exec.LookPath("git"); err != nil {
+		return fmt.Errorf("git is required to snapshot the live-updated pack but was not found in PATH")
+	}
+
+	isRepo, err := isGitRepo(repoPath)
+	if err != nil {
+		return err
+	}
+	if !isRepo {
+		if _, err := runGitInDir(repoPath, "init"); err != nil {
+			return fmt.Errorf("failed to initialize git repo in %s: %w", repoPath, err)
+		}
+	}
+
+	if _, err := runGitInDir(repoPath, "add", "-A"); err != nil {
+		return fmt.Errorf("failed to stage peer test product files in %s: %w", repoPath, err)
+	}
+	if _, err := runGitInDir(repoPath, "-c", "user.name=aihelper", "-c", "user.email=aihelper@local", "commit", "-m", message); err != nil {
+		return fmt.Errorf("failed to create git snapshot in %s: %w", repoPath, err)
+	}
+	return nil
+}
+
+func isGitRepo(repoPath string) (bool, error) {
+	_, err := runGitInDir(repoPath, "rev-parse", "--is-inside-work-tree")
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+func runGitInDir(repoPath string, args ...string) (string, error) {
+	gitArgs := append([]string{"-C", repoPath}, args...)
+	cmd := exec.Command("git", gitArgs...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		errMsg := strings.TrimSpace(stderr.String())
+		if errMsg == "" {
+			errMsg = strings.TrimSpace(stdout.String())
+		}
+		if errMsg == "" {
+			errMsg = err.Error()
+		}
+		return "", fmt.Errorf("git %s failed: %s", strings.Join(args, " "), errMsg)
+	}
+
+	return strings.TrimSpace(stdout.String()), nil
 }
 
 func runPeerTestCommand(ctx context.Context, workingDir string, envOverrides map[string]string, execStep, displayStep string) error {

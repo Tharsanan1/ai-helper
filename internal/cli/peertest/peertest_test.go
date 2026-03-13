@@ -6,6 +6,7 @@ import (
 	"image/gif"
 	"image/png"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -223,6 +224,84 @@ func TestShouldAllowStepRerun(t *testing.T) {
 	}
 	if shouldAllowStepRerun("grep \"Applied \" ../updates/logs/wso2update-13-03-2026.log") {
 		t.Fatal("did not expect non-update command to allow rerun")
+	}
+}
+
+func TestCreateGitSnapshot(t *testing.T) {
+	if _, err := os.Stat("/usr/bin/git"); err != nil {
+		if _, pathErr := exec.LookPath("git"); pathErr != nil {
+			t.Skip("git not available in PATH")
+		}
+	}
+
+	repoDir := t.TempDir()
+	productFile := filepath.Join(repoDir, "product.txt")
+	if err := os.WriteFile(productFile, []byte("live-updated"), 0644); err != nil {
+		t.Fatalf("failed to write product file: %v", err)
+	}
+
+	if err := createGitSnapshot(repoDir, "updated live"); err != nil {
+		t.Fatalf("expected git snapshot to succeed, got %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(repoDir, ".git")); err != nil {
+		t.Fatalf("expected .git directory to exist, got %v", err)
+	}
+
+	log, err := runGitInDir(repoDir, "log", "-1", "--pretty=%s")
+	if err != nil {
+		t.Fatalf("failed to inspect git log: %v", err)
+	}
+	if log != "updated live" {
+		t.Fatalf("expected commit message 'updated live', got %q", log)
+	}
+}
+
+func TestSnapshotLiveUpdatedProductHook_FiresOnlyAfterSecondUpdateStep(t *testing.T) {
+	if _, err := os.Stat("/usr/bin/git"); err != nil {
+		if _, pathErr := exec.LookPath("git"); pathErr != nil {
+			t.Skip("git not available in PATH")
+		}
+	}
+
+	repoDir := t.TempDir()
+	productFile := filepath.Join(repoDir, "product.txt")
+	if err := os.WriteFile(productFile, []byte("after-live-update"), 0644); err != nil {
+		t.Fatalf("failed to write product file: %v", err)
+	}
+
+	hook := snapshotLiveUpdatedProductHook(repoDir)
+	if err := hook(0, 1, "./wso2update_darwin -u user -p secret", "./wso2update_darwin -u user -p <hidden>"); err != nil {
+		t.Fatalf("expected first update hook call to succeed, got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(repoDir, ".git")); !os.IsNotExist(err) {
+		t.Fatalf("did not expect git repo to be created after first update step")
+	}
+
+	if err := hook(1, 2, "./wso2update_darwin", "./wso2update_darwin"); err != nil {
+		t.Fatalf("expected second update hook call to succeed, got %v", err)
+	}
+	log, err := runGitInDir(repoDir, "log", "-1", "--pretty=%s")
+	if err != nil {
+		t.Fatalf("failed to inspect git log after hook: %v", err)
+	}
+	if log != "updated live" {
+		t.Fatalf("expected commit message 'updated live', got %q", log)
+	}
+
+	secondFile := filepath.Join(repoDir, "later.txt")
+	if err := os.WriteFile(secondFile, []byte("testing"), 0644); err != nil {
+		t.Fatalf("failed to write second file: %v", err)
+	}
+	if err := hook(3, 3, "./wso2update_darwin", "./wso2update_darwin"); err != nil {
+		t.Fatalf("expected later hook call to be ignored, got %v", err)
+	}
+	status, err := runGitInDir(repoDir, "status", "--porcelain")
+	if err != nil {
+		t.Fatalf("failed to inspect git status after later hook call: %v", err)
+	}
+	if !strings.Contains(status, "later.txt") {
+		t.Fatalf("expected later file to remain uncommitted, got %q", status)
 	}
 }
 
